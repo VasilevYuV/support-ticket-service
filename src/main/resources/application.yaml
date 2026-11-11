@@ -1,6 +1,12 @@
 spring:
   application:
     name: support-service
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: true
+    datatype:
+      enum:
+        fail-on-numbers-for-enums: true
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/support_service}
     username: ${DB_USERNAME:support_service}
