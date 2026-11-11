@@ -27,7 +27,7 @@
 | Требование | BR-09, KR-01, KR-03; точность дат в API, выборка [from, to) и среднее время решения |
 | Окружение | Windows, Java 25, Hibernate 7.4.13.Final, PostgreSQL JDBC 42.7.14, PostgreSQL 18.6 через Testcontainers |
 | Серьёзность | Средняя: искажение допустимых старых дат и неверная выборка отчёта |
-| Статус | Исправление подготовлено в BL-14, регрессия пройдена; коммит ещё не создан |
+| Статус | Исправлен в коммите `ba2deb0` (BL-14), регрессия пройдена |
 
 Воспроизведение на конфигурации b1e954e: добавить SummaryReportBoundaryApiTest и выполнить `.\gradlew.bat test --tests '*SummaryReportBoundaryApiTest'`. Для воспроизведения после включения исправления в изолированной копии временно убрать только свойство hibernate.type.preferred_instant_jdbc_type из application.yaml и повторить команду.
 

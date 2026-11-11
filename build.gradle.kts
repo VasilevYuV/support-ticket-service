@@ -51,6 +51,25 @@ tasks.withType<Test>().configureEach {
     }
 }
 
+tasks.register<Test>("unitTest") {
+    group = "verification"
+    description = "Проверяет сервисы и валидацию без Spring-контекста и Docker."
+    testClassesDirs =
+        sourceSets.test
+            .get()
+            .output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
+    filter {
+        includeTestsMatching("ru.vasilev.support.*.service.*Test")
+        includeTestsMatching("ru.vasilev.support.*.validation.*Test")
+    }
+    systemProperty("user.timezone", "Pacific/Honolulu")
+    systemProperty("junit.jupiter.testmethod.order.default", "org.junit.jupiter.api.MethodOrderer\$Random")
+    systemProperty("junit.jupiter.testclass.order.default", "org.junit.jupiter.api.ClassOrderer\$Random")
+    systemProperty("junit.jupiter.execution.order.random.seed", "20261112")
+    shouldRunAfter(tasks.test)
+}
+
 tasks.register<Test>("reportRegressionTest") {
     group = "verification"
     description = "Повторяет проверки отчёта в другом часовом поясе и порядке."
