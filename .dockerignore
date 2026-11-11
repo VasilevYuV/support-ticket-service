@@ -1,0 +1,14 @@
+*
+!Dockerfile
+!gradlew
+!build.gradle.kts
+!settings.gradle.kts
+!gradle.lockfile
+!settings-gradle.lockfile
+!gradle/
+!gradle/**
+!src/
+!src/main/
+!src/main/**
+!docs/
+!docs/openapi.yaml
