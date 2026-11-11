@@ -39,7 +39,7 @@ PostgreSQL, JPA, Flyway и Testcontainers подключены на BL-06. Ра�
 - `SupportApplication.java` содержит точку входа Spring Boot.
 - `config/TimeConfiguration.kt` предоставляет общий `Clock` в UTC.
 - `application.yaml` задаёт имя приложения, порт, подключение к базе, Flyway, JPA и проверки здоровья.
-- Предметные модули `ticket` и `category` содержат собственные `controller`, `service`, `repository`, `dto`, `entity`; у заявок выделены `mapper` и `validation`. Модуль `report` появится вместе со статистикой. Пустые классы и пакеты для будущих операций не создаются.
+- Предметные модули `ticket` и `category` содержат собственные `controller`, `service`, `repository`, `dto`, `entity`; у заявок выделены `mapper` и `validation`. Модуль `report` содержит controller, service, repository, dto и validation; бизнес-расчёт написан на Kotlin. Пустые классы и пакеты для будущих операций не создаются.
 - Gradle Wrapper является стандартным сгенерированным инструментом Gradle; исходные служебные скрипты и их лицензия сохраняются.
 
 Конфигурация времени на Kotlin подтверждает наличие исполняемого Kotlin-кода в каркасе. Она не заменяет обязательный бизнес-блок статистики и три содержательных Kotlin-теста по заданию.
@@ -70,6 +70,8 @@ PostgreSQL, JPA, Flyway и Testcontainers подключены на BL-06. Ра�
 ```
 
 Изменения каталога версий и lock-файла проверяются вместе. `--write-locks` не нужен для обычного запуска. Версия Wrapper изменяется официальной задачей `wrapper` с указанием версии и SHA-256 нового дистрибутива.
+
+Для повторных проверок отчёта добавлена задача `reportRegressionTest`. Она использует тот же testRuntimeClasspath и закреплённые зависимости, отдельную JVM с Pacific/Kiritimati и случайный порядок классов и методов JUnit с seed=20261111. Задача запускается явно, не входит в build и сохраняет собственный XML/HTML-отчёт. Объём и результаты: [BL-14](report-boundaries.md).
 
 ## 6. Локальное окружение
 

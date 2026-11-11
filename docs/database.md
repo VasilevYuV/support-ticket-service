@@ -30,7 +30,7 @@ Flyway ведёт таблицу `flyway_schema_history`, сверяет кон�
 
 Параметры передаются через окружение процесса. Файл `.env` сам по себе не загружается Spring Boot. Пустой пароль не является настройкой доверенного доступа к базе. Для локального примера используется явно указанный учебный пароль; реальные учётные данные в Git не записываются.
 
-`spring.jpa.open-in-view=false` запрещает держать JPA-сессию на время обработки всего HTTP-запроса. Время JDBC настроено на UTC. `/actuator/health` включает состояние подключения к PostgreSQL; группа `/actuator/health/readiness` включает `readinessState` и `db`. Liveness не зависит от базы. Детали подключения в публичном ответе health не раскрываются.
+`spring.jpa.open-in-view=false` запрещает держать JPA-сессию на время обработки всего HTTP-запроса. Время JDBC настроено на UTC. С BL-14 Instant передаётся через `hibernate.type.preferred_instant_jdbc_type=TIMESTAMP_WITH_TIMEZONE`, чтобы сохранять календарные даты во всём принятом диапазоне 0001-9999 без преобразования через Timestamp и Calendar. Это исправляет [DEF-02](defects.md#def-02-сдвиг-календарных-дат-при-передаче-instant-в-postgresql); схема timestamptz(6) и миграции не изменены. `/actuator/health` включает состояние подключения к PostgreSQL; группа `/actuator/health/readiness` включает `readinessState` и `db`. Liveness не зависит от базы. Детали подключения в публичном ответе health не раскрываются.
 
 ## 3. Локальная база в Docker
 

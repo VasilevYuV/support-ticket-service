@@ -51,6 +51,26 @@ tasks.withType<Test>().configureEach {
     }
 }
 
+tasks.register<Test>("reportRegressionTest") {
+    group = "verification"
+    description = "Повторяет проверки отчёта в другом часовом поясе и порядке."
+    testClassesDirs =
+        sourceSets.test
+            .get()
+            .output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
+    filter {
+        includeTestsMatching("*SummaryReport*")
+        includeTestsMatching("*ReportPeriodParserTest")
+        includeTestsMatching("*TicketOverduePolicyTest")
+    }
+    systemProperty("user.timezone", "Pacific/Kiritimati")
+    systemProperty("junit.jupiter.testmethod.order.default", "org.junit.jupiter.api.MethodOrderer\$Random")
+    systemProperty("junit.jupiter.testclass.order.default", "org.junit.jupiter.api.ClassOrderer\$Random")
+    systemProperty("junit.jupiter.execution.order.random.seed", "20261111")
+    shouldRunAfter(tasks.test)
+}
+
 spotless {
     java {
         target("src/**/*.java")

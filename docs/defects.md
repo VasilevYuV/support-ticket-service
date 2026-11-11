@@ -18,3 +18,27 @@
 Проверка через преобразование аргумента Spring MVC не обеспечила строгий текстовый формат. Исправление: контроллер принимает исходную строку, явно вызывает `ApiUuid.parse` с проверкой групп `8-4-4-4-12` и только затем передаёт UUID сервису. Корректный UUID с прописными буквами по-прежнему допускается.
 
 Регрессия: `RequestValidationApiTest.rejectsNonCanonicalUuid`, вариант `1-1-1-1-1`. Дополнительно проверены UUID без дефисов, в скобках и с неверными символами. После исправления все 193 выполнения тестов прошли. Текущее XML-свидетельство: `build/test-results/test/TEST-ru.vasilev.support.ticket.controller.RequestValidationApiTest.xml`; оно пересоздаётся при запуске тестов.
+
+## DEF-02. Сдвиг календарных дат при передаче Instant в PostgreSQL
+
+| Поле | Значение |
+|---|---|
+| Обнаружен | 11.11.2026, BL-14, ветка feature-c/report-boundaries на основе b1e954e |
+| Требование | BR-09, KR-01, KR-03; точность дат в API, выборка [from, to) и среднее время решения |
+| Окружение | Windows, Java 25, Hibernate 7.4.13.Final, PostgreSQL JDBC 42.7.14, PostgreSQL 18.6 через Testcontainers |
+| Серьёзность | Средняя: искажение допустимых старых дат и неверная выборка отчёта |
+| Статус | Исправление подготовлено в BL-14, регрессия пройдена; коммит ещё не создан |
+
+Воспроизведение на конфигурации b1e954e: добавить SummaryReportBoundaryApiTest и выполнить `.\gradlew.bat test --tests '*SummaryReportBoundaryApiTest'`. Для воспроизведения после включения исправления в изолированной копии временно убрать только свойство hibernate.type.preferred_instant_jdbc_type из application.yaml и повторить команду.
+
+1. Сохранить через JDBC и OffsetDateTime решённую заявку с createdAt=0001-01-01T00:00:00Z и closedAt=9999-12-31T23:59:59.999999Z, с согласованной историей переходов.
+2. Запросить отчёт с from=createdAt и to=closedAt. Ожидается totalCreated=1 и averageResolutionSeconds=315537897599.999999. Получен totalCreated=0. Независимый JDBC-запрос с теми же границами выбирает одну запись.
+3. Установить тестовый Clock на 0001-01-01T00:00:00Z, создать заявку через HTTP и прочитать created_at из PostgreSQL как OffsetDateTime. Ожидается 0001-01-01, получено 0001-01-03. Для 1500-02-28 получено 1500-02-19; для 1582-10-04 получено 1582-09-24.
+
+Причина: используемое отображение Instant передавало JDBC-параметры через Timestamp.from и Calendar в UTC. Преобразование старых дат расходилось с календарём java.time и PostgreSQL. В установленном Hibernate это подтверждено кодом TimestampUtcAsJdbcTimestampJdbcType; TimestampWithTimeZoneJdbcType использует OffsetDateTime и setObject.
+
+Исправление: `hibernate.type.preferred_instant_jdbc_type: TIMESTAMP_WITH_TIMEZONE` в application.yaml. Настройка применяется к Instant во всём приложении, включая параметры JPQL и поля сущностей. Доступность настройки описана в [документации Hibernate](https://docs.hibernate.org/orm/7.1/javadocs/org/hibernate/cfg/MappingSettings.html#PREFERRED_INSTANT_JDBC_TYPE). Схема БД и миграции не меняются. Исправление предотвращает дальнейшее искажение; уже сохранённые данные автоматически не пересчитываются. Проверки выполнялись на временных тестовых базах.
+
+Регрессионные методы: SummaryReportBoundaryApiTest.preservesLargeDurationWithoutOverflowOrDecimalLoss и preservesCalendarDateInDatabaseAndReport. До изменения конфигурации из 14 выполнений нового класса упали 4: большая длительность и три даты до 1582-10-15. После изменения все 14 прошли, полный набор содержит 452 успешных выполнения. Повторный набор отчёта в Pacific/Kiritimati с перемешанным порядком содержит 69 успешных выполнений.
+
+Исходное свидетельство сохранено локально в build/verification/bl14/before-fix.xml, итоговые XML находятся в build/test-results/test и build/test-results/reportRegressionTest. Каталог build не включается в Git. Сводка: [результаты BL-14](report-boundaries.md).
