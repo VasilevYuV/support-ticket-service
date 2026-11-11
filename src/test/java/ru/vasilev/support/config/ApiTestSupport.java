@@ -21,6 +21,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
+import ru.vasilev.support.common.contract.OpenApiContract;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.cfg.JsonNodeFeature;
 import tools.jackson.databind.json.JsonMapper;
@@ -91,11 +92,19 @@ public abstract class ApiTestSupport {
 
     protected ApiResult send(HttpRequest request) throws Exception {
         var response = client.send(request, HttpResponse.BodyHandlers.ofString());
-        return new ApiResult(
-                response.statusCode(),
+        var body =
                 json.reader()
                         .with(JsonNodeFeature.USE_BIG_DECIMAL_FOR_FLOATS)
-                        .readTree(response.body()),
+                        .readTree(response.body());
+        OpenApiContract.assertResponse(
+                request.method(),
+                request.uri().getPath(),
+                response.statusCode(),
+                body,
+                response.headers());
+        return new ApiResult(
+                response.statusCode(),
+                body,
                 response.headers().firstValue("Location").orElse(null),
                 response.headers());
     }

@@ -71,7 +71,9 @@ PostgreSQL, JPA, Flyway и Testcontainers подключены на BL-06. Ра�
 
 Изменения каталога версий и lock-файла проверяются вместе. `--write-locks` не нужен для обычного запуска. Версия Wrapper изменяется официальной задачей `wrapper` с указанием версии и SHA-256 нового дистрибутива.
 
-Для модульных проверок предусмотрена задача `unitTest`: классы *Test из пакетов service и validation, без Spring-контекста и Docker, с зоной Pacific/Honolulu и случайным порядком JUnit (seed=20261112). Она не входит в build и записывает результаты отдельно в build/test-results/unitTest и build/reports/tests/unitTest. Состав и результаты: [BL-15](unit-testing.md).
+Для модульных проверок предусмотрена задача `unitTest`: классы *Test из пакетов service, validation и common.contract, без Spring-контекста и Docker, с зоной Pacific/Honolulu и случайным порядком JUnit (seed=20261112). Она не входит в build и записывает результаты отдельно в build/test-results/unitTest и build/reports/tests/unitTest. Состав и результаты: [BL-15](unit-testing.md).
+
+Для интеграционных проверок добавлена задача `integrationTest`: классы *Test из controller и database.migration, с настоящим PostgreSQL через Testcontainers. Она запускается явно и сохраняет собственные результаты. `processTestResources` копирует docs/openapi.yaml в тестовый classpath. Проверка ответов использует только тестовые зависимости JSON Schema Validator 3.0.6 и Jackson YAML 3.1.7; версии закреплены в каталоге и lock-файле. Jackson 3.1.7 из BOM одинаков в приложении и тестах. Подробнее: [BL-16](integration-testing.md).
 
 Для повторных проверок отчёта добавлена задача `reportRegressionTest`. Она использует тот же testRuntimeClasspath и закреплённые зависимости, отдельную JVM с Pacific/Kiritimati и случайный порядок классов и методов JUnit с seed=20261111. Задача запускается явно, не входит в build и сохраняет собственный XML/HTML-отчёт. Объём и результаты: [BL-14](report-boundaries.md).
 

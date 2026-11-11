@@ -211,7 +211,7 @@ EscapeDataString сохраняет знак `+` при использовани
 .\gradlew.bat spotlessApply
 ```
 
-Отчёт тестов создаётся в `build/reports/tests/test/index.html`, XML-результаты в `build/test-results/test`. Эти файлы и кеши не включаются в Git. Два теста проверяют запуск приложения и взаимодействие языков; `DatabaseMigrationTest` проверяет схему на реальном PostgreSQL, повторное применение миграций и ограничения целостности. `TicketApiTest` отправляет реальные HTTP-запросы, затем независимо читает PostgreSQL для проверки сохранения и отсутствия побочных изменений. `RequestValidationApiTest` проверяет строгий входной контракт и ошибки HTTP, включая сбой записи в PostgreSQL. `QueryParameterInterceptorTest` отдельно проверяет разрешённые имена, пустые и повторные query-параметры. `TicketDetailsServiceTest` проверяет правила редактирования, `TicketDetailsApiTest` проверяет HTTP, неизменность данных, блокировку и откат. `TicketWorkflowServiceTest`, `TicketWorkflowApiTest` и `TicketWorkflowConcurrencyTest` проверяют матрицу переходов, историю, атомарность и конкурирующие запросы. `TicketSearchApiTest` проверяет фильтры и страницы на PostgreSQL, модульные тесты проверяют параметры, общее время и число страниц. Kotlin-тесты `TicketOverduePolicyTest` вызывают Java-правило просрочки. `SummaryReportServiceTest` проверяет расчёт Kotlin-отчёта, nullable-поля, точное округление и один вызов Java-источника. `SummaryReportApiTest` проверяет полный путь Java/Kotlin/PostgreSQL и один SQL-запрос на отчёт. SummaryReportBoundaryApiTest написан на Kotlin и проверяет точность среднего через PostgreSQL и JSON, пересчёт после изменения заявки и календарные границы. На BL-15 все 483 выполнения полного набора и 111 выполнений отдельного модульного набора прошли без ошибок и пропусков. TicketRequestValidatorTest и TicketCreationServiceTest дополняют проверки границ текста, значений по умолчанию и выбора категории. Исправлен сдвиг старых дат при передаче Instant в PostgreSQL (DEF-02).
+Отчёт тестов создаётся в `build/reports/tests/test/index.html`, XML-результаты в `build/test-results/test`. Эти файлы и кеши не включаются в Git. Два теста проверяют запуск приложения и взаимодействие языков; `DatabaseMigrationTest` проверяет схему на реальном PostgreSQL, повторное применение миграций и ограничения целостности. `TicketApiTest` отправляет реальные HTTP-запросы, затем независимо читает PostgreSQL для проверки сохранения и отсутствия побочных изменений. `RequestValidationApiTest` проверяет строгий входной контракт и ошибки HTTP, включая сбой записи в PostgreSQL. `QueryParameterInterceptorTest` отдельно проверяет разрешённые имена, пустые и повторные query-параметры. `TicketDetailsServiceTest` проверяет правила редактирования, `TicketDetailsApiTest` проверяет HTTP, неизменность данных, блокировку и откат. `TicketWorkflowServiceTest`, `TicketWorkflowApiTest` и `TicketWorkflowConcurrencyTest` проверяют матрицу переходов, историю, атомарность и конкурирующие запросы. `TicketSearchApiTest` проверяет фильтры и страницы на PostgreSQL, модульные тесты проверяют параметры, общее время и число страниц. Kotlin-тесты `TicketOverduePolicyTest` вызывают Java-правило просрочки. `SummaryReportServiceTest` проверяет расчёт Kotlin-отчёта, nullable-поля, точное округление и один вызов Java-источника. `SummaryReportApiTest` проверяет полный путь Java/Kotlin/PostgreSQL и один SQL-запрос на отчёт. SummaryReportBoundaryApiTest написан на Kotlin и проверяет точность среднего через PostgreSQL и JSON, пересчёт после изменения заявки и календарные границы. На BL-16 успешно выполнены 502 проверки полного набора, 371 интеграционная и 129 модульных. Все HTTP-ответы через ApiTestSupport сверяются со схемами OpenAPI. DatabaseRestartTest подтверждает повторный запуск приложения на одной базе с сохранением данных и истории миграций. TicketRequestValidatorTest и TicketCreationServiceTest дополняют проверки границ текста, значений по умолчанию и выбора категории. Исправлен сдвиг старых дат при передаче Instant в PostgreSQL (DEF-02).
 
 Модульные проверки сервисов и валидации без Docker и запуска Spring-контекста:
 
@@ -219,7 +219,15 @@ EscapeDataString сохраняет знак `+` при использовани
 .\gradlew.bat unitTest
 ```
 
-Отчёт: `build/reports/tests/unitTest/index.html`, XML: `build/test-results/unitTest`. Задача запускает 47 методов в десяти классах, использует управляемое время, Pacific/Honolulu и перемешанный порядок JUnit. Соответствие всем UT-01-UT-15 приведено в [описании модульных проверок](docs/unit-testing.md). Полный `test` по-прежнему требует Docker.
+Отчёт: `build/reports/tests/unitTest/index.html`, XML: `build/test-results/unitTest`. Задача запускает 53 метода в одиннадцати классах, включая технические проверки OpenAPI, использует управляемое время, Pacific/Honolulu и перемешанный порядок JUnit. Соответствие всем UT-01-UT-15 приведено в [описании модульных проверок](docs/unit-testing.md). Полный `test` по-прежнему требует Docker.
+
+Отдельный интеграционный набор с PostgreSQL через Testcontainers:
+
+```powershell
+.\gradlew.bat integrationTest
+```
+
+Нужен работающий Docker. Отчёт: `build/reports/tests/integrationTest/index.html`, XML: `build/test-results/integrationTest`. Проверяются десять классов, все восемь операций API, ограничения БД, повторный запуск приложения и откат транзакций. Состав и соответствие IT-01-IT-15: [интеграционные проверки](docs/integration-testing.md).
 
 Дополнительный прогон отчёта с часовым поясом Pacific/Kiritimati и перемешанным порядком классов и методов:
 
@@ -251,9 +259,10 @@ EscapeDataString сохраняет знак `+` при использовани
 - [HTTP-отчёт, PostgreSQL-источник и результаты BL-13](docs/report-api.md).
 - [Границы статистики, Kotlin-интеграция и результаты BL-14](docs/report-boundaries.md).
 - [Модульные правила, отдельный запуск и результаты BL-15](docs/unit-testing.md).
+- [Интеграционные проверки, OpenAPI и результаты BL-16](docs/integration-testing.md).
 - [Журнал дефектов и регрессионные проверки](docs/defects.md).
 
-Следующий этап - проверка полноты интеграционного набора с Testcontainers (BL-16). Диаграммы хранятся в блоках `mermaid` внутри Markdown и отображаются в просмотрщике с поддержкой Mermaid. В backlog отдельно отмечены подготовленные материалы и этапы, которые ещё предстоит выполнить.
+Следующий этап - два сквозных сценария жизненного цикла и запрета операции без изменения данных (BL-17). Диаграммы хранятся в блоках `mermaid` внутри Markdown и отображаются в просмотрщике с поддержкой Mermaid. В backlog отдельно отмечены подготовленные материалы и этапы, которые ещё предстоит выполнить.
 
 Тест-план содержит 15 модульных, 15 интеграционных и 2 сквозных сценария, 10 эксплуатационных сценариев и 4 проверки материалов. Они связаны со всеми 55 критериями приёмки и 36 требованиями. Выполненные и частично выполненные проверки отмечены в [тест-плане](docs/test-plan.md); количество запусков на параметрах не подменяет количество бизнес-сценариев.
 

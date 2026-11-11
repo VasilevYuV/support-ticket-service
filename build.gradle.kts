@@ -33,6 +33,8 @@ dependencies {
     testImplementation(libs.spring.boot.testcontainers)
     testImplementation(libs.testcontainers.postgresql)
     testImplementation(libs.kotlin.test.junit5)
+    testImplementation(libs.json.schema.validator)
+    testImplementation(libs.jackson.yaml)
     testRuntimeOnly(libs.junit.platform.launcher)
 }
 
@@ -51,6 +53,27 @@ tasks.withType<Test>().configureEach {
     }
 }
 
+tasks.processTestResources {
+    from("docs/openapi.yaml") {
+        into("contract")
+    }
+}
+
+tasks.register<Test>("integrationTest") {
+    group = "verification"
+    description = "Проверяет HTTP API, миграции и PostgreSQL через Testcontainers."
+    testClassesDirs =
+        sourceSets.test
+            .get()
+            .output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
+    filter {
+        includeTestsMatching("ru.vasilev.support.*.controller.*Test")
+        includeTestsMatching("ru.vasilev.support.database.migration.*Test")
+    }
+    shouldRunAfter(tasks.test)
+}
+
 tasks.register<Test>("unitTest") {
     group = "verification"
     description = "Проверяет сервисы и валидацию без Spring-контекста и Docker."
@@ -62,6 +85,7 @@ tasks.register<Test>("unitTest") {
     filter {
         includeTestsMatching("ru.vasilev.support.*.service.*Test")
         includeTestsMatching("ru.vasilev.support.*.validation.*Test")
+        includeTestsMatching("ru.vasilev.support.common.contract.*Test")
     }
     systemProperty("user.timezone", "Pacific/Honolulu")
     systemProperty("junit.jupiter.testmethod.order.default", "org.junit.jupiter.api.MethodOrderer\$Random")

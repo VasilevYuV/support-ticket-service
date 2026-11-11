@@ -4,6 +4,7 @@ kotlin = "2.4.21"
 spotless = "8.11.0"
 javaFormat = "2.0.0"
 ktlint = "1.8.0"
+jsonSchema = "3.0.6"
 
 [libraries]
 spring-boot-bom = { module = "org.springframework.boot:spring-boot-dependencies", version.ref = "spring-boot" }
@@ -20,6 +21,8 @@ jackson-kotlin = { module = "tools.jackson.module:jackson-module-kotlin" }
 kotlin-reflect = { module = "org.jetbrains.kotlin:kotlin-reflect", version.ref = "kotlin" }
 kotlin-test-junit5 = { module = "org.jetbrains.kotlin:kotlin-test-junit5", version.ref = "kotlin" }
 junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
+json-schema-validator = { module = "com.networknt:json-schema-validator", version.ref = "jsonSchema" }
+jackson-yaml = { module = "tools.jackson.dataformat:jackson-dataformat-yaml" }
 
 [plugins]
 spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }
