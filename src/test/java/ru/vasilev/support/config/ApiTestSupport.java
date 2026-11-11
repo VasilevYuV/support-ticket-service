@@ -56,13 +56,18 @@ public abstract class ApiTestSupport {
         assertThat(response.body().get("status").intValue()).isEqualTo(status);
         assertThat(response.body().get("code").stringValue()).isEqualTo(code);
         assertThat(response.body().get("path").stringValue()).isEqualTo(path);
-        assertThat(response.body().get("timestamp").stringValue()).isEqualTo(NOW.toString());
+        assertThat(response.body().get("timestamp").stringValue())
+                .isEqualTo(expectedNow().toString());
         assertThat(response.body().get("message").stringValue()).isNotBlank();
         assertThat(response.body().get("violations").isArray()).isTrue();
     }
 
     protected URI uri(String path) {
         return URI.create("http://localhost:" + port + path);
+    }
+
+    protected Instant expectedNow() {
+        return NOW;
     }
 
     protected ApiResult send(String method, String path, String body) throws Exception {

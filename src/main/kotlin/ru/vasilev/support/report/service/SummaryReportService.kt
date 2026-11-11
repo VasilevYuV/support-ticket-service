@@ -1,5 +1,6 @@
 package ru.vasilev.support.report.service
 
+import org.springframework.stereotype.Service
 import ru.vasilev.support.common.error.ApiException
 import ru.vasilev.support.report.dto.ReportTicket
 import ru.vasilev.support.report.dto.SummaryReport
@@ -14,6 +15,7 @@ import java.time.Duration
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 
+@Service
 class SummaryReportService(
     private val dataSource: ReportDataSource,
     private val clock: Clock,
