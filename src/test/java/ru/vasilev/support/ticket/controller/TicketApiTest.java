@@ -2,62 +2,19 @@ package ru.vasilev.support.ticket.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.time.Clock;
-import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.UUID;
 import java.util.stream.Stream;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Import;
-import org.springframework.context.annotation.Primary;
-import org.springframework.jdbc.core.JdbcTemplate;
-import ru.vasilev.support.config.PostgresTestConfiguration;
-import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.json.JsonMapper;
+import ru.vasilev.support.config.ApiTestSupport;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Import({PostgresTestConfiguration.class, TicketApiTest.FixedTimeConfiguration.class})
-class TicketApiTest {
-    private static final Instant NOW = Instant.parse("2026-11-11T09:00:00.123456Z");
-    private final HttpClient client =
-            HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
-
-    @Autowired private JdbcTemplate jdbc;
-    @Autowired private JsonMapper json;
-    @LocalServerPort private int port;
-    private long categoryId;
-
-    @BeforeEach
-    void prepareDatabase() {
-        jdbc.update("DELETE FROM ticket_status_history");
-        jdbc.update("DELETE FROM tickets");
-        categoryId =
-                jdbc.queryForObject(
-                        "SELECT id FROM categories WHERE name = ?", Long.class, "Оборудование");
-    }
-
-    @AfterEach
-    void closeHttpClient() {
-        client.close();
-    }
-
+class TicketApiTest extends ApiTestSupport {
     @Test
     void listsCategoriesInIdOrder() throws Exception {
         var response = send("GET", "/api/categories", null);
@@ -313,44 +270,5 @@ class TicketApiTest {
                 "INVALID_REQUEST",
                 "/api/tickets/not-a-uuid");
         assertThat(jdbc.queryForObject("SELECT count(*) FROM tickets", Integer.class)).isZero();
-    }
-
-    private void assertError(ApiResult response, int status, String code, String path) {
-        assertThat(response.status()).isEqualTo(status);
-        assertThat(response.body().size()).isEqualTo(6);
-        assertThat(response.body().get("status").intValue()).isEqualTo(status);
-        assertThat(response.body().get("code").stringValue()).isEqualTo(code);
-        assertThat(response.body().get("path").stringValue()).isEqualTo(path);
-        assertThat(response.body().get("timestamp").stringValue()).isEqualTo(NOW.toString());
-        assertThat(response.body().get("message").stringValue()).isNotBlank();
-        assertThat(response.body().get("violations").isArray()).isTrue();
-    }
-
-    private ApiResult send(String method, String path, String body) throws Exception {
-        var request =
-                HttpRequest.newBuilder(URI.create("http://localhost:" + port + path))
-                        .timeout(Duration.ofSeconds(10));
-        if (body == null) {
-            request.method(method, HttpRequest.BodyPublishers.noBody());
-        } else {
-            request.header("Content-Type", "application/json")
-                    .method(method, HttpRequest.BodyPublishers.ofString(body));
-        }
-        var response = client.send(request.build(), HttpResponse.BodyHandlers.ofString());
-        return new ApiResult(
-                response.statusCode(),
-                json.readTree(response.body()),
-                response.headers().firstValue("Location").orElse(null));
-    }
-
-    private record ApiResult(int status, JsonNode body, String location) {}
-
-    @TestConfiguration(proxyBeanMethods = false)
-    static class FixedTimeConfiguration {
-        @Bean
-        @Primary
-        Clock fixedClock() {
-            return Clock.fixed(NOW.plusNanos(789), ZoneOffset.UTC);
-        }
     }
 }

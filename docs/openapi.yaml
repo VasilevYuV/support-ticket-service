@@ -3,7 +3,7 @@ info:
   title: Сервис обработки заявок технической поддержки
   version: 0.1.0
   description: 'Общий контракт API. Автор: Васильев Юрий, 4П1.23. Примеры синтетические. На BL-07 реализованы чтение
-    категорий, создание и чтение заявки; остальные операции проектные. Границы валидации описаны в docs/ticket-api.md.'
+    категорий, создание и чтение заявки; остальные операции проектные. На BL-08 добавлены строгая валидация и единые ошибки этих трёх маршрутов, см. docs/request-validation.md.'
   contact:
     name: Васильев Юрий, 4П1.23
 servers:
@@ -47,6 +47,8 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '405':
           $ref: '#/components/responses/MethodNotAllowed'
+        '406':
+          $ref: '#/components/responses/NotAcceptable'
         '500':
           $ref: '#/components/responses/InternalError'
   /api/tickets:
@@ -88,6 +90,8 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '405':
           $ref: '#/components/responses/MethodNotAllowed'
+        '406':
+          $ref: '#/components/responses/NotAcceptable'
         '500':
           $ref: '#/components/responses/InternalError'
         '415':
@@ -146,6 +150,8 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '405':
           $ref: '#/components/responses/MethodNotAllowed'
+        '406':
+          $ref: '#/components/responses/NotAcceptable'
         '500':
           $ref: '#/components/responses/InternalError'
       parameters:
@@ -228,6 +234,8 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '405':
           $ref: '#/components/responses/MethodNotAllowed'
+        '406':
+          $ref: '#/components/responses/NotAcceptable'
         '500':
           $ref: '#/components/responses/InternalError'
         '404':
@@ -266,6 +274,8 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '405':
           $ref: '#/components/responses/MethodNotAllowed'
+        '406':
+          $ref: '#/components/responses/NotAcceptable'
         '500':
           $ref: '#/components/responses/InternalError'
         '404':
@@ -320,6 +330,8 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '405':
           $ref: '#/components/responses/MethodNotAllowed'
+        '406':
+          $ref: '#/components/responses/NotAcceptable'
         '500':
           $ref: '#/components/responses/InternalError'
         '404':
@@ -371,6 +383,8 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '405':
           $ref: '#/components/responses/MethodNotAllowed'
+        '406':
+          $ref: '#/components/responses/NotAcceptable'
         '500':
           $ref: '#/components/responses/InternalError'
         '404':
@@ -427,6 +441,8 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '405':
           $ref: '#/components/responses/MethodNotAllowed'
+        '406':
+          $ref: '#/components/responses/NotAcceptable'
         '500':
           $ref: '#/components/responses/InternalError'
       parameters:
@@ -450,14 +466,14 @@ components:
       type: string
       format: date-time
       pattern: ^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:[0-5]\d(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})$
-      description: ISO 8601 с явным смещением или Z, не более 6 дробных знаков; ответ в UTC.
+      description: ISO 8601 с явным смещением или Z, не более 6 дробных знаков; исходный год и год UTC в диапазоне 0001-9999; ответ в UTC.
     NullableTimestamp:
       type:
       - string
       - 'null'
       format: date-time
       pattern: ^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:[0-5]\d(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})$
-      description: ISO 8601 с явным смещением или Z, не более 6 дробных знаков; ответ в UTC.
+      description: ISO 8601 с явным смещением или Z, не более 6 дробных знаков; исходный год и год UTC в диапазоне 0001-9999; ответ в UTC.
     Priority:
       type: string
       enum:
@@ -748,6 +764,7 @@ components:
           - TICKET_NOT_FOUND
           - STATE_CONFLICT
           - METHOD_NOT_ALLOWED
+          - NOT_ACCEPTABLE
           - UNSUPPORTED_MEDIA_TYPE
           - INTERNAL_ERROR
         message:
@@ -763,10 +780,11 @@ components:
       name: id
       in: path
       required: true
-      description: UUID заявки; неверный формат даёт 400, неизвестный корректный UUID даёт 404.
+      description: UUID заявки из групп 8-4-4-4-12 hex-символов любого регистра; неверный формат даёт 400, неизвестный корректный UUID даёт 404.
       schema:
         type: string
         format: uuid
+        pattern: '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
       example: 123e4567-e89b-42d3-a456-426614174000
   responses:
     BadRequest:
@@ -821,6 +839,19 @@ components:
             status: 405
             code: METHOD_NOT_ALLOWED
             message: Метод не поддерживается.
+            path: /api/tickets
+            violations: []
+    NotAcceptable:
+      description: Формат ответа не поддерживается; ошибка возвращается как JSON.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            timestamp: '2026-11-11T09:00:00Z'
+            status: 406
+            code: NOT_ACCEPTABLE
+            message: Запрошенный формат ответа не поддерживается.
             path: /api/tickets
             violations: []
     UnsupportedMediaType:

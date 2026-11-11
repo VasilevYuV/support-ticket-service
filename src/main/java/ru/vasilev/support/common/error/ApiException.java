@@ -28,6 +28,15 @@ public class ApiException extends RuntimeException {
         return status;
     }
 
+    public static ApiException invalidRequest(String field, String message) {
+        var violations =
+                field == null
+                        ? List.<FieldViolation>of()
+                        : List.of(new FieldViolation(field, message));
+        return new ApiException(
+                HttpStatus.BAD_REQUEST, "INVALID_REQUEST", "Неверный формат запроса.", violations);
+    }
+
     public String getCode() {
         return code;
     }

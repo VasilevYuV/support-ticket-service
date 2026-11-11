@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.vasilev.support.category.service.CategoryService;
 import ru.vasilev.support.common.error.ApiException;
+import ru.vasilev.support.common.validation.TextValues;
 import ru.vasilev.support.ticket.dto.CreateTicketRequest;
 import ru.vasilev.support.ticket.dto.TicketResponse;
 import ru.vasilev.support.ticket.entity.Ticket;
@@ -46,7 +47,7 @@ public class TicketService {
         var now = clock.instant().truncatedTo(ChronoUnit.MICROS);
         var ticket =
                 new Ticket(
-                        request.title().strip(),
+                        TextValues.stripWhitespace(request.title()),
                         request.description() == null ? "" : request.description(),
                         category,
                         request.priority() == null ? TicketPriority.MEDIUM : request.priority(),
