@@ -83,7 +83,7 @@ docker image inspect support-service:ci-local
 
 ## 7. Результаты BL-24
 
-Подготовлено в ветке feature-c/pull-request-ci на основе коммита 9eb861b (BL-23). Конфигурация и Gradle-проверка .github входят в текущий этап. Бизнес-код и тесты не менялись.
+Конфигурация CI и Gradle-проверка .github зафиксированы коммитом bb0c7df в ветке feature-c/pull-request-ci на основе 9eb861b (BL-23). Бизнес-код и тесты не менялись.
 
 Локальная проверка выполнена 11.11.2026. Для Linux создана новая копия через git archive, добавлены изменённый build.gradle.kts и workflow. В ней отсутствовали .git, готовые JAR, результаты тестов и кэш проекта. Побайтово сверены 98 файлов исходников, тестов, сборки и workflow. Использован JDK-образ из Dockerfile, Temurin 25.0.5, Docker Engine 28.4.0 linux/amd64. Для вложенного Testcontainers на Docker Desktop передан TESTCONTAINERS_HOST_OVERRIDE=host.docker.internal; workflow на Ubuntu runner этого параметра не требует.
 
@@ -104,4 +104,37 @@ docker image inspect support-service:ci-local
 
 Материалы находятся в игнорируемом build: bl24-linux-native.log, bl24-linux-results/test-results/test, bl24-linux-results/reports, bl24-linux-results/libs, bl24-image-build.log, bl24-image.json, bl24-actionlint.log, bl24-action-versions.json, bl24-text-check.log и bl24-verification.json. Журнал остановленного прохода сохранён отдельно в bl24-linux-verification.log. clean удалит эти локальные файлы.
 
-Удалённый репозиторий не настроен: git remote -v не возвращает записей. PR и запуск GitHub Actions пока отсутствуют, URL запуска нет. OPS-06 и AC-12.1 остаются ожидающими удалённой проверки; публикация, развёртывание и проверка блокировки доставки остаются BL-25-BL-27.
+## 8. Проверка на GitHub
+
+Примечание от 12.11.2026: этот раздел описывает запуск до переписывания локальной истории. URL, SHA проверенных ревизий и хеши артефактов сохранены в исходном виде. Переписанную историю и новый пакет ru.vasilev.support необходимо отдельно проверить на GitHub; старый JAR не является сборкой текущей ревизии.
+
+11.11.2026 подключён [репозиторий support-ticket-service](https://github.com/VasilevYuV/support-ticket-service). В origin/main опубликовано состояние BL-23, в origin/feature-c/pull-request-ci опубликован коммит CI. Обе локальные ветки отслеживают соответствующие ветки origin. История сохранена, новые коммиты при подключении не создавались.
+
+- [PR #1](https://github.com/VasilevYuV/support-ticket-service/pull/1): feature-c/pull-request-ci → main, один коммит и семь изменённых файлов.
+- [CI #1](https://github.com/VasilevYuV/support-ticket-service/actions/runs/43090929980): событие pull_request, итог success.
+- Коммит ветки: eff4b3c4ee46981cd3296a03279c7cb6d4b343a8.
+- Проверяемый merge-коммит GitHub: 03cab1187fe55ea6f7559248d717b6cfa48a2d22.
+
+| Проверка | Результат на GitHub |
+|---|---|
+| Format, build and test | success; Java, Wrapper, Docker, оформление, build и сохранение артефактов прошли |
+| JUnit XML из скачанного артефакта | 25 файлов, 507 тестов, 0 ошибок, 0 пропусков |
+| Отчёты | HTML тестов и HTML/XML JaCoCo присутствуют; строки 488/499, ветви 204/214 |
+| Boot JAR | В архиве один support-service-0.1.0-SNAPSHOT.jar, plain.jar отсутствует; JarLauncher и SupportApplication проверены |
+| Контракт в JAR | BOOT-INF/classes/static/openapi.yaml побайтово совпадало с docs/openapi.yaml на момент запуска |
+| Build Docker image | success; образ собран после успешного verify, image.json сохранён |
+| Скачанные ZIP | SHA-256 всех трёх архивов совпадает с digest GitHub, целостность архивов проверена |
+
+В именах артефактов используется суффикс 03cab1187fe55ea6f7559248d717b6cfa48a2d22:
+
+| Артефакт | ID | Размер ZIP, байт |
+|---|---:|---:|
+| test-reports-<SHA> | 13889615228 | 714168 |
+| application-<SHA> | 13888054853 | 60817213 |
+| image-metadata-<SHA> | 13888383054 | 1779 |
+
+SHA-256 исполняемого JAR: cb02ef64621470d02b1154125be2b9ddeeb41235444cda55089f3b18c849737a. ID образа из image.json: sha256:69e94d9057f1546175f60428a6187ef8d377d5d4ca158464b03328331dd39193. Тег на runner: support-service:pr-03cab1187fe55ea6f7559248d717b6cfa48a2d22. Метаданные подтверждают пользователя 10001:10001, запуск /app/app.jar и healthcheck. Образ не публиковался и на стенд не развёртывался.
+
+Архивы скачаны в build/bl24-github-test-reports.zip, bl24-github-application.zip и bl24-github-image-metadata.zip. Сведения GitHub и результаты проверки сохранены в build/bl24-github-artifacts.json, bl24-github-run-result.json и bl24-github-verification.json. Срок хранения артефактов этого запуска на GitHub заканчивается 25.11.2026; локальные копии удаляются командой clean.
+
+OPS-06 и AC-12.1 подтверждены реальным запуском. PR #1 остаётся открытым, слияние не выполнялось. Эти результаты относятся к указанному SHA; после новых коммитов нужен новый успешный запуск. Публикация, развёртывание и проверка блокировки доставки остаются BL-25-BL-27.
