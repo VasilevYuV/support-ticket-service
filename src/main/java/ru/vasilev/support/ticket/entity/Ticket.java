@@ -71,6 +71,12 @@ public class Ticket {
         return id;
     }
 
+    public void replaceDetails(String description, TicketPriority priority, Instant dueAt) {
+        this.description = description;
+        this.priority = priority;
+        this.dueAt = dueAt;
+    }
+
     public String getTitle() {
         return title;
     }

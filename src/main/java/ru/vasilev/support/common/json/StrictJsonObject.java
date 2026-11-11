@@ -42,6 +42,14 @@ public final class StrictJsonObject {
         return text;
     }
 
+    public void require(String... fields) {
+        for (String field : fields) {
+            if (!object.has(field)) {
+                throw ApiException.validation(field, "Поле обязательно.");
+            }
+        }
+    }
+
     public Long longNumber(String field) {
         var value = object.get(field);
         if (value == null || value.isNull()) {
