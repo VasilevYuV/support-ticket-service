@@ -59,6 +59,20 @@ tasks.processTestResources {
     }
 }
 
+tasks.register<Test>("e2eTest") {
+    group = "verification"
+    description = "Проверяет сквозные сценарии через HTTP и PostgreSQL."
+    testClassesDirs =
+        sourceSets.test
+            .get()
+            .output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
+    filter {
+        includeTestsMatching("ru.vasilev.support.*.scenario.*E2ETest")
+    }
+    shouldRunAfter(tasks.test)
+}
+
 tasks.register<Test>("integrationTest") {
     group = "verification"
     description = "Проверяет HTTP API, миграции и PostgreSQL через Testcontainers."

@@ -75,6 +75,8 @@ PostgreSQL, JPA, Flyway и Testcontainers подключены на BL-06. Ра�
 
 Для интеграционных проверок добавлена задача `integrationTest`: классы *Test из controller и database.migration, с настоящим PostgreSQL через Testcontainers. Она запускается явно и сохраняет собственные результаты. `processTestResources` копирует docs/openapi.yaml в тестовый classpath. Проверка ответов использует только тестовые зависимости JSON Schema Validator 3.0.6 и Jackson YAML 3.1.7; версии закреплены в каталоге и lock-файле. Jackson 3.1.7 из BOM одинаков в приложении и тестах. Подробнее: [BL-16](integration-testing.md).
 
+Для сквозных проверок предусмотрена задача `e2eTest`: классы *E2ETest из пакетов scenario, полное HTTP-приложение и PostgreSQL через Testcontainers. Она запускается явно и сохраняет результаты в build/test-results/e2eTest и build/reports/tests/e2eTest. Полный test включает E2E, integrationTest и unitTest их не выбирают. Сценарии и результаты: [BL-17](end-to-end-testing.md).
+
 Для повторных проверок отчёта добавлена задача `reportRegressionTest`. Она использует тот же testRuntimeClasspath и закреплённые зависимости, отдельную JVM с Pacific/Kiritimati и случайный порядок классов и методов JUnit с seed=20261111. Задача запускается явно, не входит в build и сохраняет собственный XML/HTML-отчёт. Объём и результаты: [BL-14](report-boundaries.md).
 
 ## 6. Локальное окружение
