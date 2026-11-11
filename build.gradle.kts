@@ -1,5 +1,6 @@
 plugins {
     java
+    jacoco
     alias(libs.plugins.spring.boot)
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.spring)
@@ -16,6 +17,19 @@ repositories {
 
 kotlin {
     jvmToolchain(25)
+}
+
+jacoco {
+    toolVersion = libs.versions.jacoco.get()
+}
+
+tasks.jacocoTestReport {
+    dependsOn(tasks.test)
+    reports {
+        html.required = true
+        xml.required = true
+        csv.required = false
+    }
 }
 
 dependencies {
@@ -164,4 +178,5 @@ val checkTextConventions =
 
 tasks.check {
     dependsOn(checkTextConventions)
+    dependsOn(tasks.jacocoTestReport)
 }

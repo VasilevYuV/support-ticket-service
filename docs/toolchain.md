@@ -28,9 +28,9 @@
 | Spring Data JPA, PostgreSQL JDBC, Flyway | 4.1.2, 42.7.14, 12.4.0 из BOM Spring Boot 4.1.2 | Подключены на BL-06 |
 | Testcontainers | 2.0.5 из BOM Spring Boot 4.1.2 | Подключён на BL-06 |
 | springdoc-openapi | 3.2.0 | При документировании реализованного API |
-| JaCoCo | 0.8.14 | При подготовке отчёта покрытия |
+| JaCoCo | 0.8.14 | Подключён на BL-19; версия в каталоге, зависимости в lock-файле |
 
-PostgreSQL, JPA, Flyway и Testcontainers подключены на BL-06. Разрешённые версии записаны в lock-файле; результаты проверки схемы приведены в [инструкции PostgreSQL](database.md). springdoc и JaCoCo остаются задачами следующих этапов.
+PostgreSQL, JPA, Flyway и Testcontainers подключены на BL-06. Разрешённые версии записаны в lock-файле; результаты проверки схемы приведены в [инструкции PostgreSQL](database.md). springdoc остаётся задачей документирования реализованного API. JaCoCo подключён на BL-19.
 
 Для PostgreSQL выбран опубликованный выпуск [18.6](https://www.postgresql.org/docs/release/18.6/). springdoc 3.2.x указан как совместимый со Spring Boot 4.1.x в [матрице springdoc](https://springdoc.org/#what-is-the-compatibility-matrix-of-springdoc-openapi-with-spring-boot). Схема и миграции проверяются на реальном PostgreSQL 18.6.
 
@@ -80,6 +80,8 @@ PostgreSQL, JPA, Flyway и Testcontainers подключены на BL-06. Ра�
 Для повторных проверок отчёта добавлена задача `reportRegressionTest`. Она использует тот же testRuntimeClasspath и закреплённые зависимости, отдельную JVM с Pacific/Kiritimati и случайный порядок классов и методов JUnit с seed=20261111. Задача запускается явно, не входит в build и сохраняет собственный XML/HTML-отчёт. Объём и результаты: [BL-14](report-boundaries.md).
 
 Для проверки исправлений DEF-01 и DEF-02 используется `scripts/verify-regressions.ps1` (PowerShell 7). Он копирует текущий коммит через Git, запускает выбранные тесты в отдельном каталоге build и сохраняет результаты для вариантов с исправлением и без него. В обычный build эта проверка не включена. Подробности: [BL-18](defect-regression.md).
+
+Для покрытия используется JaCoCo 0.8.14, поддерживающий Java 25 согласно [истории выпусков](https://github.com/jacoco/jacoco/releases/tag/v0.8.14). Задача `jacocoTestReport` зависит от полного `test` и входит в `check` и `build`. HTML и XML включены явно по [документации Gradle](https://docs.gradle.org/current/userguide/jacoco_plugin.html). Измеряются классы всего main, включая Java и Kotlin, без пользовательских исключений. Используется только `build/jacoco/test.exec`; результаты отдельных unitTest, integrationTest, e2eTest и reportRegressionTest не смешиваются. Отчёт и ограничения: [BL-19](test-coverage.md).
 
 ## 6. Локальное окружение
 
