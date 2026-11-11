@@ -1,0 +1,13 @@
+# Ускоренные проверки и детали health только для отдельного учебного проекта.
+services:
+  app:
+    restart: "no"
+    environment:
+      SPRING_DATASOURCE_HIKARI_CONNECTION_TIMEOUT: "2000"
+      SPRING_DATASOURCE_HIKARI_VALIDATION_TIMEOUT: "1000"
+      MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: always
+    healthcheck:
+      interval: 2s
+      timeout: 5s
+      retries: 2
+      start_period: 10s

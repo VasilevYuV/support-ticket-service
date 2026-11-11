@@ -1,0 +1,6 @@
+# Недостижимый порог свободного места воспроизводит отказ readiness без заполнения диска.
+services:
+  app:
+    environment:
+      MANAGEMENT_ENDPOINT_HEALTH_GROUP_READINESS_INCLUDE: readinessState,db,diskSpace
+      MANAGEMENT_HEALTH_DISKSPACE_THRESHOLD: 1000000000000000B

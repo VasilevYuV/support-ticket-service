@@ -1,0 +1,6 @@
+services:
+  app:
+    environment:
+      SPRING_FLYWAY_LOCATIONS: classpath:db/migration,filesystem:/diagnostics/migrations
+    volumes:
+      - ./scripts/diagnostics/migrations:/diagnostics/migrations:ro
