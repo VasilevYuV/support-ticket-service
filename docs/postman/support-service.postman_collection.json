@@ -1,0 +1,761 @@
+{
+  "info": {
+    "name": "Практика: заявки технической поддержки",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Автор: Васильев Юрий, 4П1.23. Запускать целиком по порядку на отдельной пустой учебной базе. Создаёт четыре заявки через API, оставляет их для демонстрации. Повторный запуск останавливается до создания новых данных. Все восемь операций API, статусы 200/201/400/404/409. Инструкция: docs/api-demo.md."
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "01. Категории",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/categories"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.test(\"Справочник содержит четыре категории\", () => pm.expect(body.map(x => x.name)).to.have.members([\"Оборудование\", \"Программное обеспечение\", \"Доступы\", \"Сеть\"]));",
+              "pm.collectionVariables.set(\"categoryId\", body.find(x => x.name === \"Оборудование\").id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "02. Пустая учебная база",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/tickets"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.test(\"Перед демонстрацией заявок нет\", () => pm.expect(body.totalElements).to.eql(0));",
+              "if (body.totalElements !== 0) {",
+              "    pm.execution.setNextRequest(null);",
+              "    throw new Error(\"Нужна отдельная пустая учебная база. Существующие заявки не удаляются.\");",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "03. Новая просроченная заявка",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/tickets",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Не работает принтер\",\n  \"categoryId\": {{categoryId}},\n  \"description\": \"Учебные данные. Васильев Юрий, 4П1.23.\",\n  \"priority\": \"HIGH\",\n  \"dueAt\": \"2000-01-01T00:00:00Z\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
+              "const body = pm.response.json();",
+              "pm.test(\"Новая заявка и Location\", () => {",
+              "    pm.expect(body.status).to.eql(\"NEW\");",
+              "    pm.expect(body.closedAt).to.eql(null);",
+              "    pm.expect(body.priority).to.eql(\"HIGH\");",
+              "    pm.expect(pm.response.headers.get(\"Location\")).to.eql(\"/api/tickets/\" + body.id);",
+              "});",
+              "pm.collectionVariables.set(\"newId\", body.id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "04. Заявка для работы",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/tickets",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Требуется настройка рабочего места\",\n  \"categoryId\": {{categoryId}},\n  \"description\": \"Учебные данные. Васильев Юрий, 4П1.23.\",\n  \"priority\": \"MEDIUM\",\n  \"dueAt\": null\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
+              "const body = pm.response.json();",
+              "pm.test(\"Новая заявка и Location\", () => {",
+              "    pm.expect(body.status).to.eql(\"NEW\");",
+              "    pm.expect(body.closedAt).to.eql(null);",
+              "    pm.expect(body.priority).to.eql(\"MEDIUM\");",
+              "    pm.expect(pm.response.headers.get(\"Location\")).to.eql(\"/api/tickets/\" + body.id);",
+              "});",
+              "pm.collectionVariables.set(\"progressId\", body.id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "05. Заявка для завершения",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/tickets",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Замена кабеля принтера\",\n  \"categoryId\": {{categoryId}},\n  \"description\": \"Учебные данные. Васильев Юрий, 4П1.23.\",\n  \"priority\": \"LOW\",\n  \"dueAt\": null\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
+              "const body = pm.response.json();",
+              "pm.test(\"Новая заявка и Location\", () => {",
+              "    pm.expect(body.status).to.eql(\"NEW\");",
+              "    pm.expect(body.closedAt).to.eql(null);",
+              "    pm.expect(body.priority).to.eql(\"LOW\");",
+              "    pm.expect(pm.response.headers.get(\"Location\")).to.eql(\"/api/tickets/\" + body.id);",
+              "});",
+              "pm.collectionVariables.set(\"resolvedId\", body.id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "06. Заявка для отмены",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/tickets",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Повторное обращение\",\n  \"categoryId\": {{categoryId}},\n  \"description\": \"Учебные данные. Васильев Юрий, 4П1.23.\",\n  \"priority\": \"MEDIUM\",\n  \"dueAt\": null\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
+              "const body = pm.response.json();",
+              "pm.test(\"Новая заявка и Location\", () => {",
+              "    pm.expect(body.status).to.eql(\"NEW\");",
+              "    pm.expect(body.closedAt).to.eql(null);",
+              "    pm.expect(body.priority).to.eql(\"MEDIUM\");",
+              "    pm.expect(pm.response.headers.get(\"Location\")).to.eql(\"/api/tickets/\" + body.id);",
+              "});",
+              "pm.collectionVariables.set(\"cancelledId\", body.id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "07. Чтение заявки",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/tickets/{{newId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.test(\"UUID и просрочка\", () => {",
+              "    pm.expect(body.id).to.eql(pm.collectionVariables.get(\"newId\"));",
+              "    pm.expect(body.overdue).to.eql(true);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "08. Редактирование описания",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/tickets/{{newId}}/details",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"description\": \"Проверены питание и кабель. Нужна диагностика.\",\n  \"priority\": \"HIGH\",\n  \"dueAt\": \"2000-01-01T00:00:00Z\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.test(\"Редактируемые поля и состояние\", () => {",
+              "    pm.expect(body.description).to.eql(\"Проверены питание и кабель. Нужна диагностика.\");",
+              "    pm.expect(body.priority).to.eql(\"HIGH\");",
+              "    pm.expect(body.dueAt).to.eql(\"2000-01-01T00:00:00Z\");",
+              "    pm.expect(body.status).to.eql(\"NEW\");",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "09. Начать настройку",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/tickets/{{progressId}}/status",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"IN_PROGRESS\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.test(\"Состояние IN_PROGRESS\", () => {",
+              "    pm.expect(body.status).to.eql(\"IN_PROGRESS\");",
+              "    pm.expect(body.closedAt === null).to.eql(true);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "10. Начать замену кабеля",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/tickets/{{resolvedId}}/status",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"IN_PROGRESS\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.test(\"Состояние IN_PROGRESS\", () => {",
+              "    pm.expect(body.status).to.eql(\"IN_PROGRESS\");",
+              "    pm.expect(body.closedAt === null).to.eql(true);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "11. Завершить замену кабеля",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/tickets/{{resolvedId}}/status",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"RESOLVED\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.test(\"Состояние RESOLVED\", () => {",
+              "    pm.expect(body.status).to.eql(\"RESOLVED\");",
+              "    pm.expect(body.closedAt !== null).to.eql(true);",
+              "});",
+              "pm.collectionVariables.set(\"resolvedSnapshot\", JSON.stringify(body));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "12. Отменить повторное обращение",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/tickets/{{cancelledId}}/status",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"CANCELLED\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.test(\"Состояние CANCELLED\", () => {",
+              "    pm.expect(body.status).to.eql(\"CANCELLED\");",
+              "    pm.expect(body.closedAt !== null).to.eql(true);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "13. История решения",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/tickets/{{resolvedId}}/history"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.test(\"Два последовательных перехода\", () => {",
+              "    pm.expect(body.map(x => [x.fromStatus, x.toStatus])).to.eql([[\"NEW\", \"IN_PROGRESS\"], [\"IN_PROGRESS\", \"RESOLVED\"]]);",
+              "    pm.expect(body[1].changedAt).to.eql(JSON.parse(pm.collectionVariables.get(\"resolvedSnapshot\")).closedAt);",
+              "});",
+              "pm.collectionVariables.set(\"historySnapshot\", JSON.stringify(body));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "14. Открытые просроченные с высоким приоритетом",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/tickets?status=NEW&priority=HIGH&categoryId={{categoryId}}&overdue=true&page=0&size=2"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.test(\"Все фильтры и пагинация\", () => {",
+              "    pm.expect(body.totalElements).to.eql(1);",
+              "    pm.expect(body.totalPages).to.eql(1);",
+              "    pm.expect(body.page).to.eql(0);",
+              "    pm.expect(body.size).to.eql(2);",
+              "    pm.expect(body.content.map(x => x.id)).to.eql([pm.collectionVariables.get(\"newId\")]);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "15. Отчёт по учебным данным",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/reports/summary?from=0001-01-01T00:00:00Z&to=9999-12-31T23:59:59Z"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.test(\"Все показатели четырёх заявок\", () => {",
+              "    pm.expect(body.totalCreated).to.eql(4);",
+              "    pm.expect(body.byStatus).to.eql({NEW: 1, IN_PROGRESS: 1, RESOLVED: 1, CANCELLED: 1});",
+              "    pm.expect(body.byPriority).to.eql({LOW: 1, MEDIUM: 2, HIGH: 1});",
+              "    pm.expect(body.openOverdue).to.eql(1);",
+              "    pm.expect(body.averageResolutionSeconds).to.be.a(\"number\").and.at.least(0);",
+              "    const resolved = JSON.parse(pm.collectionVariables.get(\"resolvedSnapshot\"));",
+              "    const seconds = (Date.parse(resolved.closedAt) - Date.parse(resolved.createdAt)) / 1000;",
+              "    pm.expect(body.averageResolutionSeconds).to.be.closeTo(seconds, 0.001);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "16. Запрещённый переход",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/tickets/{{resolvedId}}/status",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"IN_PROGRESS\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));",
+              "const body = pm.response.json();",
+              "pm.test(\"Конфликт состояния\", () => pm.expect(body.code).to.eql(\"STATE_CONFLICT\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "17. Заявка после отказа",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/tickets/{{resolvedId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.test(\"Заявка не изменилась\", () => pm.expect(body).to.eql(JSON.parse(pm.collectionVariables.get(\"resolvedSnapshot\"))));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "18. История после отказа",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/tickets/{{resolvedId}}/history"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "const body = pm.response.json();",
+              "pm.test(\"История не изменилась\", () => pm.expect(body).to.eql(JSON.parse(pm.collectionVariables.get(\"historySnapshot\"))));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "19. Неверный UUID",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/tickets/1-1-1-1-1"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+              "const body = pm.response.json();",
+              "pm.test(\"Ошибка формата\", () => pm.expect(body.code).to.eql(\"INVALID_REQUEST\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "20. Неизвестная заявка",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/tickets/{{$guid}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 404\", () => pm.response.to.have.status(404));",
+              "const body = pm.response.json();",
+              "pm.test(\"Заявка отсутствует\", () => pm.expect(body.code).to.eql(\"TICKET_NOT_FOUND\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "21. Неверный период",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/reports/summary?from=2026-11-01T00:00:00Z&to=2026-11-01T00:00:00Z"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+              "const body = pm.response.json();",
+              "pm.test(\"Ошибка периода\", () => pm.expect(body.code).to.eql(\"VALIDATION_ERROR\"));"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

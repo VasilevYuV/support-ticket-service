@@ -42,6 +42,7 @@ dependencies {
     runtimeOnly(libs.postgresql)
     implementation(libs.jackson.kotlin)
     implementation(libs.kotlin.reflect)
+    implementation(libs.springdoc.webmvc.ui)
 
     testImplementation(libs.spring.boot.test)
     testImplementation(libs.spring.boot.testcontainers)
@@ -70,6 +71,12 @@ tasks.withType<Test>().configureEach {
 tasks.processTestResources {
     from("docs/openapi.yaml") {
         into("contract")
+    }
+}
+
+tasks.processResources {
+    from("docs/openapi.yaml") {
+        into("static")
     }
 }
 

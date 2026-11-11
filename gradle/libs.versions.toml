@@ -6,8 +6,10 @@ javaFormat = "2.0.0"
 ktlint = "1.8.0"
 jsonSchema = "3.0.6"
 jacoco = "0.8.14"
+springdoc = "3.2.0"
 
 [libraries]
+springdoc-webmvc-ui = { module = "org.springdoc:springdoc-openapi-starter-webmvc-ui", version.ref = "springdoc" }
 spring-boot-bom = { module = "org.springframework.boot:spring-boot-dependencies", version.ref = "spring-boot" }
 spring-boot-webmvc = { module = "org.springframework.boot:spring-boot-starter-webmvc" }
 spring-boot-actuator = { module = "org.springframework.boot:spring-boot-starter-actuator" }
