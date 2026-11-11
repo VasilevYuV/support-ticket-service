@@ -59,14 +59,14 @@ public class TicketService {
     }
 
     public TicketResponse getById(UUID id) {
-        var ticket = repository.findById(id).orElseThrow(this::notFound);
+        var ticket = repository.findById(id).orElseThrow(TicketErrors::notFound);
         return mapper.toResponse(ticket, clock.instant().truncatedTo(ChronoUnit.MICROS));
     }
 
     @Transactional
     public TicketResponse replaceDetails(UUID id, ReplaceTicketDetailsRequest request) {
         validator.validate(request);
-        var ticket = repository.findByIdForUpdate(id).orElseThrow(this::notFound);
+        var ticket = repository.findByIdForUpdate(id).orElseThrow(TicketErrors::notFound);
         if (ticket.getStatus() != TicketStatus.NEW
                 && ticket.getStatus() != TicketStatus.IN_PROGRESS) {
             throw new ApiException(
@@ -77,10 +77,5 @@ public class TicketService {
         }
         ticket.replaceDetails(request.description(), request.priority(), request.dueAt());
         return mapper.toResponse(ticket, clock.instant().truncatedTo(ChronoUnit.MICROS));
-    }
-
-    private ApiException notFound() {
-        return new ApiException(
-                HttpStatus.NOT_FOUND, "TICKET_NOT_FOUND", "Заявка не найдена.", List.of());
     }
 }

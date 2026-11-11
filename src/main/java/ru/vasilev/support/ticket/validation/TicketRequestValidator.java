@@ -3,6 +3,7 @@ package ru.vasilev.support.ticket.validation;
 import org.springframework.stereotype.Component;
 import ru.vasilev.support.common.error.ApiException;
 import ru.vasilev.support.common.validation.TextValues;
+import ru.vasilev.support.ticket.dto.ChangeTicketStatusRequest;
 import ru.vasilev.support.ticket.dto.CreateTicketRequest;
 import ru.vasilev.support.ticket.dto.ReplaceTicketDetailsRequest;
 
@@ -36,6 +37,12 @@ public class TicketRequestValidator {
         if (description != null && length(description) > 10000) {
             throw ApiException.validation(
                     "description", "Описание не должно превышать 10000 символов.");
+        }
+    }
+
+    public void validate(ChangeTicketStatusRequest request) {
+        if (request.status() == null) {
+            throw ApiException.validation("status", "Статус обязателен.");
         }
     }
 

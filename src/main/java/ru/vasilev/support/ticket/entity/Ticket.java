@@ -81,6 +81,14 @@ public class Ticket {
         return title;
     }
 
+    public void changeStatus(TicketStatus status, Instant changedAt) {
+        this.status = status;
+        this.closedAt =
+                status == TicketStatus.RESOLVED || status == TicketStatus.CANCELLED
+                        ? changedAt
+                        : null;
+    }
+
     public String getDescription() {
         return description;
     }
