@@ -150,7 +150,7 @@ val checkTextConventions =
         description = "Проверяет отсутствие длинного и среднего тире в исходниках и документации."
         val sources =
             fileTree(projectDir) {
-                include("README.md", "docs/**", "src/**", "*.gradle.kts", "gradle/*.toml")
+                include("README.md", "docs/**", "src/**", "scripts/**", "*.gradle.kts", "gradle/*.toml")
             }
         inputs.files(sources)
         doLast {
