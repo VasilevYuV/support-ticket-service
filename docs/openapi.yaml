@@ -1,0 +1,851 @@
+openapi: 3.1.0
+info:
+  title: Сервис обработки заявок технической поддержки
+  version: 0.1.0
+  description: 'Проектный контракт API. Автор: Васильев Юрий, 4П1.23. Примеры синтетические; приложение пока не
+    реализовано.'
+  contact:
+    name: Васильев Юрий, 4П1.23
+servers:
+- url: http://localhost:8080
+  description: Планируемый адрес локального запуска
+tags:
+- name: ticket
+  description: Модуль заявок
+- name: category
+  description: Модуль категорий
+- name: report
+  description: Модуль статистики
+security: []
+paths:
+  /api/categories:
+    get:
+      operationId: listCategories
+      tags:
+      - category
+      summary: Получить категории
+      description: Справочник только для чтения. Порядок id ASC. Идентификаторы в примерах иллюстративные.
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Category'
+              example:
+              - id: 1
+                name: Оборудование
+              - id: 2
+                name: Программное обеспечение
+              - id: 3
+                name: Доступы
+              - id: 4
+                name: Сеть
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /api/tickets:
+    post:
+      operationId: createTicket
+      tags:
+      - ticket
+      summary: Создать заявку
+      description: Создаёт NEW с пустой историей. Статус и временные метки задаёт сервер. Неизвестная категория
+        даёт 400.
+      responses:
+        '201':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ticket'
+              example:
+                id: 123e4567-e89b-42d3-a456-426614174000
+                title: Не работает принтер
+                description: Принтер не отвечает.
+                category:
+                  id: 1
+                  name: Оборудование
+                priority: HIGH
+                status: NEW
+                createdAt: '2026-11-11T09:00:00Z'
+                dueAt: '2026-11-12T15:00:00Z'
+                closedAt: null
+                overdue: false
+          headers:
+            Location:
+              description: Относительный URL созданной заявки.
+              schema:
+                type: string
+                format: uri-reference
+              example: /api/tickets/123e4567-e89b-42d3-a456-426614174000
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTicketRequest'
+            examples:
+              full:
+                value:
+                  title: Не работает принтер
+                  categoryId: 1
+                  description: Принтер не отвечает.
+                  priority: HIGH
+                  dueAt: '2026-11-12T15:00:00Z'
+              minimal:
+                value:
+                  title: Нет доступа к папке
+                  categoryId: 3
+    get:
+      operationId: listTickets
+      tags:
+      - ticket
+      summary: Найти заявки
+      description: Все фильтры соединены AND; порядок createdAt DESC, id DESC. Страница за пределами результата
+        пуста, totalElements сохраняется.
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TicketPage'
+              example:
+                content:
+                - id: 123e4567-e89b-42d3-a456-426614174000
+                  title: Не работает принтер
+                  description: Принтер не отвечает.
+                  category:
+                    id: 1
+                    name: Оборудование
+                  priority: HIGH
+                  status: NEW
+                  createdAt: '2026-11-11T09:00:00Z'
+                  dueAt: '2026-11-12T15:00:00Z'
+                  closedAt: null
+                  overdue: false
+                page: 0
+                size: 20
+                totalElements: 1
+                totalPages: 1
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+        '500':
+          $ref: '#/components/responses/InternalError'
+      parameters:
+      - name: status
+        in: query
+        required: false
+        description: Текущий статус.
+        schema:
+          $ref: '#/components/schemas/Status'
+      - name: priority
+        in: query
+        required: false
+        description: Приоритет.
+        schema:
+          $ref: '#/components/schemas/Priority'
+      - name: categoryId
+        in: query
+        required: false
+        description: Категория; неизвестный ID даёт пустую выборку.
+        schema:
+          type: integer
+          format: int64
+          minimum: 1
+          maximum: 9223372036854775807
+      - name: overdue
+        in: query
+        required: false
+        description: 'true: открытые просроченные; false: все остальные.'
+        schema:
+          type: boolean
+      - name: page
+        in: query
+        required: false
+        description: Номер страницы от нуля.
+        schema:
+          type: integer
+          format: int32
+          minimum: 0
+          maximum: 2147483647
+          default: 0
+      - name: size
+        in: query
+        required: false
+        description: Размер страницы.
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+  /api/tickets/{id}:
+    parameters:
+    - $ref: '#/components/parameters/TicketId'
+    get:
+      operationId: getTicket
+      tags:
+      - ticket
+      summary: Получить заявку
+      description: Получить заявку
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ticket'
+              example:
+                id: 123e4567-e89b-42d3-a456-426614174000
+                title: Не работает принтер
+                description: Принтер не отвечает.
+                category:
+                  id: 1
+                  name: Оборудование
+                priority: HIGH
+                status: NEW
+                createdAt: '2026-11-11T09:00:00Z'
+                dueAt: '2026-11-12T15:00:00Z'
+                closedAt: null
+                overdue: false
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/tickets/{id}/details:
+    parameters:
+    - $ref: '#/components/parameters/TicketId'
+    put:
+      operationId: replaceTicketDetails
+      tags:
+      - ticket
+      summary: Заменить редактируемые поля
+      description: Полная замена описания, приоритета и срока у NEW или IN_PROGRESS. Все три поля обязательны. Повтор
+        идентичного запроса к открытой заявке допустим; статус и история не меняются.
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ticket'
+              example:
+                id: 123e4567-e89b-42d3-a456-426614174000
+                title: Не работает принтер
+                description: Проверены питание и кабель.
+                category:
+                  id: 1
+                  name: Оборудование
+                priority: MEDIUM
+                status: NEW
+                createdAt: '2026-11-11T09:00:00Z'
+                dueAt: null
+                closedAt: null
+                overdue: false
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReplaceTicketDetailsRequest'
+            examples:
+              replace:
+                value:
+                  description: Проверены питание и кабель.
+                  priority: MEDIUM
+                  dueAt: null
+  /api/tickets/{id}/status:
+    parameters:
+    - $ref: '#/components/parameters/TicketId'
+    patch:
+      operationId: changeTicketStatus
+      tags:
+      - ticket
+      summary: Изменить статус
+      description: Допустимы NEW -> IN_PROGRESS, NEW -> CANCELLED, IN_PROGRESS -> RESOLVED, IN_PROGRESS -> CANCELLED.
+        Самопереход и переход из терминального состояния дают 409. Статус и история сохраняются атомарно.
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ticket'
+              example:
+                id: 123e4567-e89b-42d3-a456-426614174000
+                title: Не работает принтер
+                description: Принтер не отвечает.
+                category:
+                  id: 1
+                  name: Оборудование
+                priority: HIGH
+                status: IN_PROGRESS
+                createdAt: '2026-11-11T09:00:00Z'
+                dueAt: '2026-11-12T15:00:00Z'
+                closedAt: null
+                overdue: false
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangeStatusRequest'
+            examples:
+              start:
+                value:
+                  status: IN_PROGRESS
+              resolve:
+                value:
+                  status: RESOLVED
+              cancel:
+                value:
+                  status: CANCELLED
+  /api/tickets/{id}/history:
+    parameters:
+    - $ref: '#/components/parameters/TicketId'
+    get:
+      operationId: getTicketHistory
+      tags:
+      - ticket
+      summary: Получить историю статусов
+      description: Порядок id ASC. Для новой заявки пустой массив, для отсутствующей заявки 404.
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StatusHistoryEntry'
+              example:
+              - id: 1
+                fromStatus: NEW
+                toStatus: IN_PROGRESS
+                changedAt: '2026-11-11T09:30:00Z'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/reports/summary:
+    get:
+      operationId: getSummaryReport
+      tags:
+      - report
+      summary: Получить статистику за период
+      description: Одна выборка [from, to) по createdAt. Текущие статусы; просрочка на один момент Clock. Среднее
+        только RESOLVED, null без решённых. Все группы присутствуют. from >= to даёт 400.
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SummaryReport'
+              examples:
+                summary:
+                  value:
+                    from: '2026-11-01T00:00:00Z'
+                    to: '2026-11-12T00:00:00Z'
+                    totalCreated: 4
+                    byStatus:
+                      NEW: 1
+                      IN_PROGRESS: 1
+                      RESOLVED: 2
+                      CANCELLED: 0
+                    byPriority:
+                      LOW: 1
+                      MEDIUM: 1
+                      HIGH: 2
+                    openOverdue: 1
+                    averageResolutionSeconds: 7200
+                empty:
+                  value:
+                    from: '2026-11-01T00:00:00Z'
+                    to: '2026-11-12T00:00:00Z'
+                    totalCreated: 0
+                    byStatus:
+                      NEW: 0
+                      IN_PROGRESS: 0
+                      RESOLVED: 0
+                      CANCELLED: 0
+                    byPriority:
+                      LOW: 0
+                      MEDIUM: 0
+                      HIGH: 0
+                    openOverdue: 0
+                    averageResolutionSeconds: null
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+        '500':
+          $ref: '#/components/responses/InternalError'
+      parameters:
+      - name: from
+        in: query
+        required: true
+        description: Включительная граница времени создания.
+        schema:
+          $ref: '#/components/schemas/Timestamp'
+        example: '2026-11-01T00:00:00Z'
+      - name: to
+        in: query
+        required: true
+        description: Исключительная граница времени создания, строго позже from.
+        schema:
+          $ref: '#/components/schemas/Timestamp'
+        example: '2026-11-12T00:00:00Z'
+components:
+  schemas:
+    Timestamp:
+      type: string
+      format: date-time
+      pattern: ^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:[0-5]\d(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})$
+      description: ISO 8601 с явным смещением или Z, не более 6 дробных знаков; ответ в UTC.
+    NullableTimestamp:
+      type:
+      - string
+      - 'null'
+      format: date-time
+      pattern: ^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:[0-5]\d(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})$
+      description: ISO 8601 с явным смещением или Z, не более 6 дробных знаков; ответ в UTC.
+    Priority:
+      type: string
+      enum:
+      - LOW
+      - MEDIUM
+      - HIGH
+    Status:
+      type: string
+      enum:
+      - NEW
+      - IN_PROGRESS
+      - RESOLVED
+      - CANCELLED
+    Category:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - name
+      properties:
+        id:
+          type: integer
+          format: int64
+          minimum: 1
+          maximum: 9223372036854775807
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+    CreateTicketRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - title
+      - categoryId
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+          pattern: \S
+          description: Непробельный заголовок. Длина исходного значения не более 200 символов; края очищаются.
+        categoryId:
+          type: integer
+          format: int64
+          minimum: 1
+          maximum: 9223372036854775807
+        description:
+          type:
+          - string
+          - 'null'
+          maxLength: 10000
+          default: ''
+          description: Пропуск и null преобразуются в пустую строку.
+        priority:
+          type:
+          - string
+          - 'null'
+          enum:
+          - LOW
+          - MEDIUM
+          - HIGH
+          - null
+          default: MEDIUM
+          description: Пропуск и null дают MEDIUM.
+        dueAt:
+          $ref: '#/components/schemas/NullableTimestamp'
+    ReplaceTicketDetailsRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - description
+      - priority
+      - dueAt
+      properties:
+        description:
+          type: string
+          maxLength: 10000
+        priority:
+          $ref: '#/components/schemas/Priority'
+        dueAt:
+          $ref: '#/components/schemas/NullableTimestamp'
+      description: Все три поля обязательны. Пустое описание и null срока очищают значения. Пропуск поля даёт 400.
+    ChangeStatusRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - status
+      properties:
+        status:
+          $ref: '#/components/schemas/Status'
+    Ticket:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - title
+      - description
+      - category
+      - priority
+      - status
+      - createdAt
+      - dueAt
+      - closedAt
+      - overdue
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 10000
+        category:
+          $ref: '#/components/schemas/Category'
+        priority:
+          $ref: '#/components/schemas/Priority'
+        status:
+          $ref: '#/components/schemas/Status'
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+        dueAt:
+          $ref: '#/components/schemas/NullableTimestamp'
+        closedAt:
+          $ref: '#/components/schemas/NullableTimestamp'
+        overdue:
+          type: boolean
+    TicketPage:
+      type: object
+      additionalProperties: false
+      required:
+      - content
+      - page
+      - size
+      - totalElements
+      - totalPages
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/Ticket'
+        page:
+          type: integer
+          minimum: 0
+        size:
+          type: integer
+          minimum: 1
+          maximum: 100
+        totalElements:
+          type: integer
+          format: int64
+          minimum: 0
+        totalPages:
+          type: integer
+          format: int64
+          minimum: 0
+    StatusHistoryEntry:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - fromStatus
+      - toStatus
+      - changedAt
+      properties:
+        id:
+          type: integer
+          format: int64
+          minimum: 1
+          maximum: 9223372036854775807
+        fromStatus:
+          $ref: '#/components/schemas/Status'
+        toStatus:
+          $ref: '#/components/schemas/Status'
+        changedAt:
+          $ref: '#/components/schemas/Timestamp'
+    SummaryReport:
+      type: object
+      additionalProperties: false
+      required:
+      - from
+      - to
+      - totalCreated
+      - byStatus
+      - byPriority
+      - openOverdue
+      - averageResolutionSeconds
+      properties:
+        from:
+          $ref: '#/components/schemas/Timestamp'
+        to:
+          $ref: '#/components/schemas/Timestamp'
+        totalCreated:
+          type: integer
+          format: int64
+          minimum: 0
+        byStatus:
+          type: object
+          additionalProperties: false
+          required:
+          - NEW
+          - IN_PROGRESS
+          - RESOLVED
+          - CANCELLED
+          properties:
+            NEW:
+              type: integer
+              format: int64
+              minimum: 0
+            IN_PROGRESS:
+              type: integer
+              format: int64
+              minimum: 0
+            RESOLVED:
+              type: integer
+              format: int64
+              minimum: 0
+            CANCELLED:
+              type: integer
+              format: int64
+              minimum: 0
+        byPriority:
+          type: object
+          additionalProperties: false
+          required:
+          - LOW
+          - MEDIUM
+          - HIGH
+          properties:
+            LOW:
+              type: integer
+              format: int64
+              minimum: 0
+            MEDIUM:
+              type: integer
+              format: int64
+              minimum: 0
+            HIGH:
+              type: integer
+              format: int64
+              minimum: 0
+        openOverdue:
+          type: integer
+          format: int64
+          minimum: 0
+        averageResolutionSeconds:
+          type:
+          - number
+          - 'null'
+          minimum: 0
+          description: Секунды, до 6 знаков после запятой, HALF_UP; null без RESOLVED.
+    Violation:
+      type: object
+      additionalProperties: false
+      required:
+      - field
+      - message
+      properties:
+        field:
+          type: string
+        message:
+          type: string
+    ApiError:
+      type: object
+      additionalProperties: false
+      required:
+      - timestamp
+      - status
+      - code
+      - message
+      - path
+      - violations
+      properties:
+        timestamp:
+          $ref: '#/components/schemas/Timestamp'
+        status:
+          type: integer
+          minimum: 400
+          maximum: 599
+        code:
+          type: string
+          enum:
+          - INVALID_REQUEST
+          - VALIDATION_ERROR
+          - TICKET_NOT_FOUND
+          - STATE_CONFLICT
+          - METHOD_NOT_ALLOWED
+          - UNSUPPORTED_MEDIA_TYPE
+          - INTERNAL_ERROR
+        message:
+          type: string
+        path:
+          type: string
+        violations:
+          type: array
+          items:
+            $ref: '#/components/schemas/Violation'
+  parameters:
+    TicketId:
+      name: id
+      in: path
+      required: true
+      description: UUID заявки; неверный формат даёт 400, неизвестный корректный UUID даёт 404.
+      schema:
+        type: string
+        format: uuid
+      example: 123e4567-e89b-42d3-a456-426614174000
+  responses:
+    BadRequest:
+      description: Запрос не прошёл проверку.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            timestamp: '2026-11-11T09:00:00Z'
+            status: 400
+            code: VALIDATION_ERROR
+            message: Запрос не прошёл проверку.
+            path: /api/tickets
+            violations:
+            - field: title
+              message: Заголовок обязателен.
+    NotFound:
+      description: Заявка не найдена.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            timestamp: '2026-11-11T09:00:00Z'
+            status: 404
+            code: TICKET_NOT_FOUND
+            message: Заявка не найдена.
+            path: /api/tickets
+            violations: []
+    Conflict:
+      description: Операция запрещена для текущего состояния заявки.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            timestamp: '2026-11-11T09:00:00Z'
+            status: 409
+            code: STATE_CONFLICT
+            message: Операция запрещена для текущего состояния заявки.
+            path: /api/tickets
+            violations: []
+    MethodNotAllowed:
+      description: Метод не поддерживается.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            timestamp: '2026-11-11T09:00:00Z'
+            status: 405
+            code: METHOD_NOT_ALLOWED
+            message: Метод не поддерживается.
+            path: /api/tickets
+            violations: []
+    UnsupportedMediaType:
+      description: Ожидается application/json.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            timestamp: '2026-11-11T09:00:00Z'
+            status: 415
+            code: UNSUPPORTED_MEDIA_TYPE
+            message: Ожидается application/json.
+            path: /api/tickets
+            violations: []
+    InternalError:
+      description: Внутренняя ошибка сервиса.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            timestamp: '2026-11-11T09:00:00Z'
+            status: 500
+            code: INTERNAL_ERROR
+            message: Внутренняя ошибка сервиса.
+            path: /api/tickets
+            violations: []
