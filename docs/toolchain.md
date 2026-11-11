@@ -25,20 +25,20 @@
 | Компонент | Выбранная версия | Этап подключения |
 |---|---|---|
 | PostgreSQL server | 18.6 | BL-06 для проверки схемы, BL-21 для Compose |
-| Spring Data JPA, PostgreSQL JDBC, Flyway | Версии из BOM Spring Boot 4.1.2 | BL-06 |
-| Testcontainers | Версия из BOM Spring Boot 4.1.2 | При появлении тестов PostgreSQL |
+| Spring Data JPA, PostgreSQL JDBC, Flyway | 4.1.2, 42.7.14, 12.4.0 из BOM Spring Boot 4.1.2 | Подключены на BL-06 |
+| Testcontainers | 2.0.5 из BOM Spring Boot 4.1.2 | Подключён на BL-06 |
 | springdoc-openapi | 3.2.0 | При документировании реализованного API |
 | JaCoCo | 0.8.14 | При подготовке отчёта покрытия |
 
-Эти компоненты пока не подключены к приложению. При подключении проверяются разрешённые зависимости и работа на выбранном окружении; наличие версии в таблице не является результатом интеграционного теста.
+PostgreSQL, JPA, Flyway и Testcontainers подключены на BL-06. Разрешённые версии записаны в lock-файле; результаты проверки схемы приведены в [инструкции PostgreSQL](database.md). springdoc и JaCoCo остаются задачами следующих этапов.
 
-Для PostgreSQL выбран опубликованный выпуск [18.6](https://www.postgresql.org/docs/release/18.6/). springdoc 3.2.x указан как совместимый со Spring Boot 4.1.x в [матрице springdoc](https://springdoc.org/#what-is-the-compatibility-matrix-of-springdoc-openapi-with-spring-boot). Проверка схемы и миграций выполняется на следующем этапе с реальной базой.
+Для PostgreSQL выбран опубликованный выпуск [18.6](https://www.postgresql.org/docs/release/18.6/). springdoc 3.2.x указан как совместимый со Spring Boot 4.1.x в [матрице springdoc](https://springdoc.org/#what-is-the-compatibility-matrix-of-springdoc-openapi-with-spring-boot). Схема и миграции проверяются на реальном PostgreSQL 18.6.
 
 ## 3. Структура текущего каркаса
 
 - `SupportApplication.java` содержит точку входа Spring Boot.
 - `config/TimeConfiguration.kt` предоставляет общий `Clock` в UTC.
-- `application.yaml` задаёт имя приложения, порт и доступность `/actuator/health`.
+- `application.yaml` задаёт имя приложения, порт, подключение к базе, Flyway, JPA и проверки здоровья.
 - Предметные модули `ticket`, `category`, `report` добавляются вместе с функциональностью. Каждый модуль содержит собственные `controller`, `service`, `repository`, `dto`, `entity` по необходимости. Пустые классы и пакеты для будущих операций не создаются.
 - Gradle Wrapper является стандартным сгенерированным инструментом Gradle; исходные служебные скрипты и их лицензия сохраняются.
 
@@ -53,7 +53,7 @@
 | `spotlessCheck` | Формат Java, Kotlin и Gradle Kotlin DSL соответствует закреплённым форматтерам |
 | `checkTextConventions` | В исходниках и документации отсутствуют длинные и средние тире |
 
-Проверки каркаса отделены от бизнес-сценариев [тест-плана](test-plan.md). Они не засчитываются как интеграционные тесты с PostgreSQL, проверки заявок или сквозные сценарии практики. Тесты запускают серверы на случайных портах и не требуют Docker.
+Проверки каркаса отделены от бизнес-сценариев [тест-плана](test-plan.md). Они не засчитываются как проверки миграций, заявок или сквозные сценарии практики. Тесты запускают серверы на случайных портах. Начиная с BL-06 они требуют Docker и получают отдельную базу через Testcontainers.
 
 ## 5. Обновление зависимостей
 
@@ -75,7 +75,7 @@
 
 При первоначальной проверке Gradle 9.3.0 компилировал классы, но тестовый процесс завершался с `ClassNotFoundException`: файл аргументов с кириллическим путём записывался в UTF-8, а Java в Windows читала его в Cp1251. Это соответствует [ошибке Gradle #30304](https://github.com/gradle/gradle/issues/30304), исправленной в 9.7.0. Поэтому выбраны Gradle 9.7.0 и совместимый Kotlin 2.4.21. Путь проекта и системная кодировка Windows не изменялись.
 
-При подготовке BL-05 обнаружены JDK 25 (`25+37-LTS-3491`) и Docker CLI 28.4.0. Docker Engine не был запущен: отсутствовал канал `dockerDesktopLinuxEngine`. Это не препятствует проверкам текущего каркаса, но перед тестами PostgreSQL потребуется работающий Docker Engine.
+При подготовке BL-05 обнаружены JDK 25 (`25+37-LTS-3491`) и Docker CLI 28.4.0. Docker Engine не был запущен: отсутствовал канал `dockerDesktopLinuxEngine`. На BL-05 база не требовалась. Перед BL-06 Docker Engine запущен и проверен: Docker Desktop 4.46.0, Engine 28.4.0, Linux/amd64. Текущие тесты требуют Docker.
 
 Сборочные файлы не содержат локального абсолютного пути к JDK. Для запуска нужен установленный JDK 25 и корректный `JAVA_HOME`. Первый запуск Wrapper и первая сборка требуют доступа к официальным репозиториям Gradle, Maven Central и Gradle Plugin Portal. Последующие сборки используют локальный кеш.
 

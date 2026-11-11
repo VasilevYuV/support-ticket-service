@@ -1,6 +1,21 @@
 spring:
   application:
     name: support-service
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/support_service}
+    username: ${DB_USERNAME:support_service}
+    password: ${DB_PASSWORD:}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate.jdbc.time_zone: UTC
+  sql:
+    init:
+      mode: never
+  flyway:
+    clean-disabled: true
 
 server:
   port: ${SERVER_PORT:8080}
@@ -13,3 +28,6 @@ management:
   endpoint:
     health:
       show-details: never
+      group:
+        readiness:
+          include: readinessState,db

@@ -13,7 +13,7 @@
 
 Подготовлены требования, 12 пользовательских историй, архитектура с четырьмя диаграммами, контракт восьми операций API и тест-план. Создан каркас Spring Boot с Java-точкой входа и Kotlin-конфигурацией времени, Gradle Wrapper, проверкой форматирования и двумя тестами запуска.
 
-Сейчас доступен только технический endpoint `/actuator/health`. Работа с заявками, статистика, PostgreSQL и миграции будут добавлены следующими этапами. Положительный health check текущего каркаса не подтверждает работу базы или бизнес-функций.
+Подключены PostgreSQL и Flyway: при запуске создаются таблицы категорий, заявок и истории, ограничения и индексы, затем четыре категории. Доступны технические endpoints `/actuator/health` и его групп; они учитывают подключение к базе. Бизнес-API заявок и статистики ещё не реализовано.
 
 ## Архитектура
 
@@ -51,7 +51,7 @@
 
 ## Сборка и запуск
 
-Нужен JDK 25. Отдельная установка Gradle не требуется. В PowerShell из корня проекта:
+Нужны JDK 25 и работающий Docker Engine с Linux-контейнерами. Тесты сами создают временную базу PostgreSQL через Testcontainers. Отдельная установка Gradle не требуется. В PowerShell из корня проекта:
 
 ```powershell
 java -version
@@ -64,6 +64,27 @@ java -version
 ```powershell
 $env:JAVA_HOME = 'C:\Program Files\Java\jdk-25'
 $env:Path = "$env:JAVA_HOME\bin;$env:Path"
+```
+
+Для обычного запуска приложения нужна отдельная база. Первый запуск локального PostgreSQL в PowerShell:
+
+```powershell
+docker run --name support-postgres -d `
+  -e POSTGRES_DB=support_service `
+  -e POSTGRES_USER=support_service `
+  -e POSTGRES_PASSWORD=support_local `
+  -p 127.0.0.1:55432:5432 `
+  --mount type=volume,source=support-postgres-data,target=/var/lib/postgresql `
+  postgres:18.6
+docker exec support-postgres pg_isready -U support_service -d support_service
+```
+
+Дождаться `accepting connections`; при необходимости повторить `pg_isready`. Если контейнер уже создан, использовать `docker start support-postgres`. Пароль в примере предназначен только для локальной учебной базы. Настройки для текущего окна PowerShell:
+
+```powershell
+$env:DB_URL = 'jdbc:postgresql://localhost:55432/support_service'
+$env:DB_USERNAME = 'support_service'
+$env:DB_PASSWORD = 'support_local'
 ```
 
 Запуск через Gradle:
@@ -84,9 +105,10 @@ java -jar .\build\libs\support-service-0.1.0-SNAPSHOT.jar
 
 ```powershell
 Invoke-RestMethod -Uri 'http://localhost:8080/actuator/health'
+Invoke-RestMethod -Uri 'http://localhost:8080/actuator/health/readiness'
 ```
 
-Ожидается HTTP `200` и JSON со значением `status: UP`; ответ также содержит группы `liveness` и `readiness`. На этом этапе Docker и база для запуска не требуются. В Linux/macOS используются `sh ./gradlew clean build` и `sh ./gradlew bootRun` при настроенном JDK 25.
+Ожидается HTTP `200` и JSON со значением `status: UP`; общий health также содержит группы `liveness` и `readiness`. Миграции выполняются автоматически до готовности приложения. Без доступной базы обычный запуск не завершается успешно. В Linux/macOS используются `sh ./gradlew clean build` и `sh ./gradlew bootRun` с теми же переменными окружения. Подробности подключения, проверки таблиц и остановки базы приведены в [инструкции PostgreSQL](docs/database.md).
 
 ## Проверки
 
@@ -101,7 +123,7 @@ Invoke-RestMethod -Uri 'http://localhost:8080/actuator/health'
 .\gradlew.bat spotlessApply
 ```
 
-Отчёт тестов создаётся в `build/reports/tests/test/index.html`, XML-результаты в `build/test-results/test`. Эти файлы и кеши не включаются в Git. Два текущих теста проверяют запуск каркаса и взаимодействие языков; бизнес-тесты из плана будут добавляться вместе с реализацией.
+Отчёт тестов создаётся в `build/reports/tests/test/index.html`, XML-результаты в `build/test-results/test`. Эти файлы и кеши не включаются в Git. Два теста проверяют запуск приложения и взаимодействие языков; `DatabaseMigrationTest` проверяет схему на реальном PostgreSQL, повторное применение миграций и ограничения целостности. Бизнес-тесты добавляются вместе с API.
 
 ## Документация
 
@@ -115,10 +137,11 @@ Invoke-RestMethod -Uri 'http://localhost:8080/actuator/health'
 - [Машиночитаемая спецификация OpenAPI](docs/openapi.yaml).
 - [Тест-план и связь с критериями приёмки](docs/test-plan.md).
 - [Версии инструментов и устройство сборки](docs/toolchain.md).
+- [Подключение PostgreSQL, миграции и проверки схемы](docs/database.md).
 
-Следующий этап - PostgreSQL, миграции таблиц заявок, категорий и истории, ограничения целостности и индексы. Диаграммы хранятся в блоках `mermaid` внутри Markdown и отображаются в просмотрщике с поддержкой Mermaid. В backlog отдельно отмечены подготовленные материалы и этапы, которые ещё предстоит выполнить.
+Следующий этап - чтение справочника категорий, создание и чтение заявки через API. Диаграммы хранятся в блоках `mermaid` внутри Markdown и отображаются в просмотрщике с поддержкой Mermaid. В backlog отдельно отмечены подготовленные материалы и этапы, которые ещё предстоит выполнить.
 
-Тест-план содержит 15 модульных, 15 интеграционных и 2 сквозных сценария, 10 эксплуатационных сценариев и 4 проверки материалов. Они связаны со всеми 55 критериями приёмки и 36 требованиями. Пока подготовлен план; эти проверки приложения ещё не выполнялись.
+Тест-план содержит 15 модульных, 15 интеграционных и 2 сквозных сценария, 10 эксплуатационных сценариев и 4 проверки материалов. Они связаны со всеми 55 критериями приёмки и 36 требованиями. Выполнение проверки миграций и ограничений отмечается отдельно в [тест-плане](docs/test-plan.md); остальные сценарии ещё предстоит выполнить.
 
 ## Правила разработки
 
