@@ -1,0 +1,10 @@
+/.gradle/
+/.kotlin/
+/build/
+/.idea/
+*.iml
+*.log
+.env
+.env.*
+!.env.example
+/backups/
