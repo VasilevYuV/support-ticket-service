@@ -4,7 +4,7 @@
 
 ## 1. Назначение и запуск
 
-Workflow [ci.yml](../.github/workflows/ci.yml) выполняет проверки pull request на GitHub Actions. Публикация образа и развёртывание относятся к BL-25/BL-26 и в этот workflow не входят.
+Workflow [ci.yml](../.github/workflows/ci.yml) выполняет проверки pull request на GitHub Actions. Этот документ фиксирует проверенный режим BL-24. На BL-25 подготовлено [расширение для публикации образа](image-publication.md) после push в main; развёртывание относится к BL-26.
 
 Событие pull_request запускает CI при открытии PR, добавлении коммитов и повторном открытии. Фильтров по путям и целевым веткам нет, поэтому изменения документации также проверяются. Новый запуск для того же PR отменяет предыдущий. Предусмотрен workflow_dispatch для ручной проверки; кнопка Run workflow доступна после появления workflow в основной ветке.
 
@@ -23,7 +23,7 @@ Workflow [ci.yml](../.github/workflows/ci.yml) выполняет проверк
 
 Связь needs: verify не позволяет начать image при провале проверок. У задания image нет условия always или continue-on-error. [Правила зависимых заданий GitHub](https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-jobs#defining-prerequisite-jobs) определяют пропуск при ошибке зависимости. Проверка блокировки публикации/доставки реальным неуспешным запуском остаётся OPS-07 после добавления CD.
 
-Образ собирается из исходников Dockerfile, без переноса JAR из verify. Это проверяет самостоятельность контейнерной сборки. Тег support-service:pr-<SHA> существует только на runner; команды login/push и подключения к стенду отсутствуют. ID в image.json подтверждает сборку, но не публикацию или доставку.
+Образ собирается из исходников Dockerfile, без переноса JAR из verify. Это проверяет самостоятельность контейнерной сборки. С BL-25 используется локальный тег support-service:ci-<SHA>; в проверенном запуске BL-24 использовался support-service:pr-<SHA>. В режиме PR команды login/push и подключения к стенду отсутствуют. ID в image.json подтверждает сборку, но не публикацию или доставку. Отдельное задание publish для main описано в инструкции BL-25.
 
 ## 3. Actions и права
 
@@ -38,7 +38,7 @@ Workflow [ci.yml](../.github/workflows/ci.yml) выполняет проверк
 
 [setup-gradle](https://github.com/gradle/actions/blob/v6.4.1/setup-gradle/action.yml) по умолчанию проверяет Wrapper JAR. Выбран cache-provider=basic; для веток, отличных от основной, кэш по умолчанию доступен только для чтения. Wrapper отдельно проверяет SHA-256 дистрибутива Gradle 9.7.0 из gradle-wrapper.properties. Версия Java в CI закреплена по основной версии 25, обновление патча выполняет setup-java; Dockerfile использует точный digest JDK/JRE.
 
-GITHUB_TOKEN ограничен contents:read; credentials не сохраняются в checkout. Workflow не запрашивает repository secrets, packages:write, доступ к environments или pull_request_target. Для PR из fork может потребоваться разрешение запуска согласно настройкам GitHub. Конфигурация предназначена для GitHub.com и GitHub-hosted runner.
+Для verify/image GITHUB_TOKEN ограничен contents:read; credentials не сохраняются в checkout. Проверки PR не запрашивают repository secrets, packages:write, доступ к environments или pull_request_target. На BL-25 packages:write добавлен только отдельному заданию publish, разрешённому на main. Для PR из fork может потребоваться разрешение запуска согласно настройкам GitHub. Конфигурация предназначена для GitHub.com и GitHub-hosted runner.
 
 ## 4. Артефакты и ошибки
 
@@ -48,7 +48,7 @@ GITHUB_TOKEN ограничен contents:read; credentials не сохраняю
 | application-<SHA> | Исполняемый Boot JAR из build/libs, без *-plain.jar | После успешных предыдущих шагов verify |
 | image-metadata-<SHA> | build/ci/image.json с результатом docker image inspect | После успешной сборки образа |
 
-Срок хранения 14 дней. Открыть Actions → CI → нужный запуск → Artifacts, скачать и распаковать архив. В архиве отчётов найти reports/tests/test/index.html и reports/jacoco/test/html/index.html; XML тестов доступен в test-results/test. Полный Docker-образ не загружается в артефакты.
+Срок хранения 14 дней. Открыть Actions → CI → нужный запуск → Artifacts, скачать и распаковать архив. В архиве отчётов найти reports/tests/test/index.html и reports/jacoco/test/html/index.html; XML тестов доступен в test-results/test. В режиме PR полный Docker-образ не загружается в артефакты. Для передачи образа между заданиями на main BL-25 добавляет архив на один день и отдельный артефакт release.
 
 Если сборка упала до тестов, файлов отчётов может ещё не быть: upload-artifact выдаст предупреждение, исходная ошибка задания сохранится. Если тесты упали, публикуются полученные JUnit XML и HTML; JaCoCo может отсутствовать, поскольку зависимый jacocoTestReport не завершился. При успешной сборке отдельный шаг требует наличие всех трёх файлов отчётов. Параметры загрузки описаны в [upload-artifact](https://github.com/actions/upload-artifact/tree/v7.0.2).
 

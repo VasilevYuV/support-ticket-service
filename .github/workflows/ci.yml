@@ -1,15 +1,22 @@
 name: CI
 
 on:
+  push:
+    branches: [main]
   pull_request:
   workflow_dispatch:
+    inputs:
+      verify_publication_gate:
+        description: Проверить блокировку публикации временным падающим тестом (только на main)
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
 concurrency:
   group: ci-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 defaults:
   run:
@@ -42,6 +49,26 @@ jobs:
 
       - name: Проверить оформление
         run: sh ./gradlew spotlessCheck checkTextConventions --no-daemon --console=plain
+
+      - name: Подготовить временный тест для проверки блокировки
+        if: github.event_name == 'workflow_dispatch' && inputs.verify_publication_gate
+        run: |
+          test "$GITHUB_REF" = 'refs/heads/main'
+          mkdir -p src/test/java/ru/vasilev/support/ci
+          cat > src/test/java/ru/vasilev/support/ci/PublicationGateProbeTest.java <<'JAVA'
+          package ru.vasilev.support.ci;
+
+          import static org.junit.jupiter.api.Assertions.fail;
+
+          import org.junit.jupiter.api.Test;
+
+          class PublicationGateProbeTest {
+              @Test
+              void blocksPublicationWhenTestFails() {
+                  fail("Контрольный отказ для проверки блокировки публикации.");
+              }
+          }
+          JAVA
 
       - name: Собрать приложение и выполнить тесты
         run: sh ./gradlew build --no-daemon --console=plain
@@ -87,9 +114,11 @@ jobs:
 
       - name: Собрать образ без публикации
         run: |
-          docker build --tag "support-service:pr-${GITHUB_SHA}" .
+          docker build --tag "support-service:ci-${GITHUB_SHA}" \
+            --label "org.opencontainers.image.source=https://github.com/${GITHUB_REPOSITORY}" \
+            --label "org.opencontainers.image.revision=${GITHUB_SHA}" .
           mkdir -p build/ci
-          docker image inspect "support-service:pr-${GITHUB_SHA}" > build/ci/image.json
+          docker image inspect "support-service:ci-${GITHUB_SHA}" > build/ci/image.json
 
       - name: Сохранить сведения об образе
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -98,3 +127,100 @@ jobs:
           path: build/ci/image.json
           if-no-files-found: error
           retention-days: 14
+
+      - name: Подготовить собранный образ к публикации
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        run: docker save "support-service:ci-${GITHUB_SHA}" | gzip > build/ci/image.tar.gz
+
+      - name: Передать образ заданию публикации
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: container-image-${{ github.sha }}
+          path: |
+            build/ci/image.tar.gz
+            build/ci/image.json
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 1
+
+  publish:
+    name: Publish SHA-tagged image
+    needs: image
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image: ${{ steps.publish.outputs.image }}
+    steps:
+      - name: Скачать проверенный образ
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: container-image-${{ github.sha }}
+          path: build/ci
+
+      - name: Загрузить образ и проверить его идентификатор
+        run: |
+          printf 'DOCKER_CONFIG=%s/ghcr\n' "$RUNNER_TEMP" >> "$GITHUB_ENV"
+          docker load --input build/ci/image.tar.gz
+          expected_id=$(python3 -c 'import json; print(json.load(open("build/ci/image.json"))[0]["Id"])')
+          actual_id=$(docker image inspect --format '{{.Id}}' "support-service:ci-${GITHUB_SHA}")
+          test "$actual_id" = "$expected_id"
+          revision=$(docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' "support-service:ci-${GITHUB_SHA}")
+          test "$revision" = "$GITHUB_SHA"
+
+      - name: Войти в GitHub Container Registry
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: printf '%s' "$GHCR_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+
+      - name: Опубликовать образ с SHA-тегом
+        id: publish
+        run: |
+          image="ghcr.io/${GITHUB_REPOSITORY,,}:${GITHUB_SHA}"
+          docker tag "support-service:ci-${GITHUB_SHA}" "$image"
+          docker push "$image"
+          docker image inspect "$image" > build/ci/published-image.json
+          python3 - "$image" <<'PY'
+          import json
+          import os
+          import sys
+          from pathlib import Path
+
+          image = sys.argv[1]
+          metadata = json.loads(Path("build/ci/published-image.json").read_text())[0]
+          repository = image.rsplit(":", 1)[0]
+          references = [ref for ref in metadata["RepoDigests"] if ref.startswith(repository + "@sha256:")]
+          if len(references) != 1:
+              raise SystemExit("Не удалось однозначно определить digest опубликованного образа.")
+          result = {"tag": image, "image": references[0], "imageId": metadata["Id"], "commit": os.environ["GITHUB_SHA"]}
+          Path("build/ci/release.json").write_text(json.dumps(result, indent=2) + "\n")
+          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+              output.write("image=" + references[0] + "\n")
+          PY
+
+      - name: Проверить загрузку опубликованного образа по digest
+        env:
+          IMAGE_REFERENCE: ${{ steps.publish.outputs.image }}
+        run: |
+          docker pull "$IMAGE_REFERENCE"
+          expected_id=$(python3 -c 'import json; print(json.load(open("build/ci/image.json"))[0]["Id"])')
+          actual_id=$(docker image inspect --format '{{.Id}}' "$IMAGE_REFERENCE")
+          test "$actual_id" = "$expected_id"
+
+      - name: Сохранить сведения о публикации
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-${{ github.sha }}
+          path: |
+            build/ci/release.json
+            build/ci/published-image.json
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Завершить сеанс registry
+        if: always()
+        run: docker logout ghcr.io
