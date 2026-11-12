@@ -76,7 +76,7 @@ SHA-тег обозначает версию исходников, digest фик
 
 ## 5. Текущие результаты BL-25
 
-Подготовлено 11.11.2026 поверх коммита 883007fec36f8f0f6c063bb68b057f10ca793cf1 прежней опубликованной истории. Этот коммит с результатами BL-24 отправлен в [PR #1](https://github.com/VasilevYuV/support-ticket-service/pull/1), оба задания повторного [CI #2](https://github.com/VasilevYuV/support-ticket-service/actions/runs/43092583552) прошли успешно. После переоформления истории 12.11.2026 ему соответствует локальный коммит 817b4b983f6460078f91fbebfa8d7347e41e101a. CI #2 подтверждает прежнюю ревизию и workflow без публикации; переписанная история ещё не отправлена на GitHub, новые настройки BL-25 ещё не закоммичены.
+Подготовлено 11.11.2026 поверх коммита 883007fec36f8f0f6c063bb68b057f10ca793cf1 прежней опубликованной истории. Этот коммит с результатами BL-24 отправлен в [PR #1](https://github.com/VasilevYuV/support-ticket-service/pull/1), оба задания повторного [CI #2](https://github.com/VasilevYuV/support-ticket-service/actions/runs/43092583552) прошли успешно. После переоформления истории 12.11.2026 ему соответствует коммит 817b4b983f6460078f91fbebfa8d7347e41e101a. CI #2 подтверждает прежнюю ревизию и workflow без публикации. Переписанная история опубликована; настройки BL-25 зафиксированы коммитом b0f1d17b82f873355d1a4283f64940b2ac55c18a и отправлены в [PR #2](https://github.com/VasilevYuV/support-ticket-service/pull/2).
 
 Следующие результаты получены до переоформления истории и относятся к сохранённым проверочным материалам прежней ревизии.
 
@@ -92,4 +92,70 @@ SHA-тег обозначает версию исходников, digest фик
 
 Материалы: build/bl25-image-transfer.log, bl25-image-mismatch.log, bl25-gate-probe.log, bl25-gate-test-results, bl25-actionlint.log и bl25-verification.json. Архив образа находится в build/bl25-check/build/ci/image.tar.gz. Эти локальные файлы игнорируются Git и удаляются clean.
 
-Реальная публикация в GHCR, загрузка через download-artifact и отрицательный запуск на GitHub пока не выполнялись. Они требуют коммита BL-25, успешного CI и слияния PR. Локальный отказ JUnit проверяет подготовку контрольного теста, но не доказывает статус skipped заданий GitHub Actions. BL-25 остаётся подготовленным, OPS-07 и AC-12.3 не объявляются завершёнными.
+На момент локальной подготовки реальная публикация в GHCR, загрузка через download-artifact и отрицательный запуск на GitHub ещё не выполнялись. Локальный отказ JUnit проверяет подготовку контрольного теста, но не доказывает статус skipped заданий GitHub Actions. Последующая проверка опубликованной ревизии фиксируется отдельно ниже.
+
+## 6. Проверка PR после переоформления истории
+
+12.11.2026 [PR #2](https://github.com/VasilevYuV/support-ticket-service/pull/2) проверен запуском [CI #5](https://github.com/VasilevYuV/support-ticket-service/actions/runs/43260359554). Коммит ветки - b0f1d17b82f873355d1a4283f64940b2ac55c18a; проверенный merge-SHA - f67d1233436ceb7685c40b5b5c486e1a9dc35ac9. PR слит в main коммитом 8b458ffa1998f36d658e4ca2acbb333bd208058e.
+
+| Проверка | Результат |
+|---|---|
+| verify | success; оформление, сборка и тесты прошли |
+| JUnit XML | 25 файлов, 507 тестов, 0 отказов, 0 ошибок, 0 пропусков; пакет ru.vasilev.support |
+| JaCoCo | Строки 488/499, ветви 204/214; HTML и XML присутствуют |
+| Boot JAR | Один исполняемый JAR; Start-Class ru.vasilev.support.SupportApplication; старого пакета нет; OpenAPI совпадает с docs/openapi.yaml |
+| image | success; образ собран после verify |
+| publish | skipped; публикация на pull_request запрещена |
+| Метаданные образа | revision совпадает с merge-SHA; автор Васильев Юрий, 4П1.23; пользователь 10001:10001 |
+
+ID проверочного образа PR: sha256:5f77cdc03ea0693843fd955dc37b1fc206c29c45a79d8e994e8fdd5987821b2a. SHA-256 скачанных ZIP отчётов, приложения и метаданных совпали с digest GitHub. SHA-256 JAR: 18352d8807554d11b31c4e261a0307e642a50a00f78ef099e9ca2b590e1cc30c. Файлы проверки сохранены в build/bl25-pr-test-reports.zip, bl25-pr-application.zip, bl25-pr-image-metadata.zip, bl25-pr-evidence.json и bl25-pr-verification.json. Они игнорируются Git и удаляются clean.
+
+Этот запуск подтверждает проверки PR и запрет публикации для PR. Проверка блокировки после ошибки теста требует отдельного запуска на main, где публикация иначе разрешена. OPS-07 и AC-12.3 остаются незавершёнными до проверки публикации и доставки.
+
+## 7. Публикация после слияния
+
+12.11.2026 [CI #6](https://github.com/VasilevYuV/support-ticket-service/actions/runs/43261561108) на push в main завершился успешно для коммита 8b458ffa1998f36d658e4ca2acbb333bd208058e. Все три задания verify, image и publish имеют success. Скачанные JUnit XML подтверждают 507 тестов без отказов, ошибок и пропусков.
+
+Проверены передача архива через download-artifact, загрузка образа, сравнение ID и revision, вход с GITHUB_TOKEN, публикация и загрузка по digest. В release.json сохранены:
+
+```text
+tag: ghcr.io/vasilevyuv/support-ticket-service:8b458ffa1998f36d658e4ca2acbb333bd208058e
+image: ghcr.io/vasilevyuv/support-ticket-service@sha256:023aa4003d0b96ba0eba3dcf4aa519631d1552f0afd49ca7463e58f5630148cc
+imageId: sha256:0e1fedd79193c8ab53dd248e5ff815f227f8eee8ad8d40a3f829905fe9fcc40e
+```
+
+Manifest SHA-тега отдельно прочитан через GHCR Registry API без учётных данных; digest и config.digest совпали с image и imageId из release.json. Полная загрузка образа по digest проверена заданием publish с GITHUB_TOKEN. Чтение через GitHub Packages REST API текущей локальной учётной записью вернуло 403; для сверки использован Registry API, права пакета не менялись.
+
+SHA-256 ZIP release-артефакта: a4a71b61880b136b32e0bd6ad7dc73cb6001878c7a4e5cc0ae79973b226a6f29, совпадает с digest GitHub. Материалы: build/bl25-main-release.zip, bl25-main-release.json, bl25-main-test-reports.zip, bl25-main-evidence.json, bl25-main-verification.json и bl25-package-before-gate.json. Архив container-image-<SHA> хранится на GitHub один день; release и отчёты хранятся 14 дней. Локальные материалы удаляются clean.
+
+Публикация подтверждена. Развёртывание приложения на стенде этим запуском не выполнялось.
+
+## 8. Контрольный отказ
+
+12.11.2026 [CI #7](https://github.com/VasilevYuV/support-ticket-service/actions/runs/43262916822) запущен вручную на той же main с verify_publication_gate=true. Verify завершился failure на шаге тестирования, после успешного оформления и подготовки временного класса.
+
+Скачанные JUnit XML содержат 508 тестов: 507 успешных и ровно один отказ ru.vasilev.support.ci.PublicationGateProbeTest с AssertionFailedError и сообщением о контрольном отказе. Ошибок инфраструктуры и пропусков нет. Класс создан только внутри рабочей копии runner и отсутствует в исходниках репозитория.
+
+Image и publish имеют skipped. Единственный артефакт запуска - test-reports-8b458ffa1998f36d658e4ca2acbb333bd208058e; container-image и release отсутствуют. После завершения запуска manifest SHA-тега повторно прочитан из GHCR: digest sha256:023aa4003d0b96ba0eba3dcf4aa519631d1552f0afd49ca7463e58f5630148cc и весь manifest совпали со снимком перед отказом.
+
+Таким образом, публикацию остановил отказ теста на разрешённом для публикации пути main. Это проверка защиты pipeline, а не дефект бизнес-логики. Блокировка развёртывания требует отдельной проверки после добавления задания доставки в BL-26.
+
+Материалы: build/bl25-gate-test-reports.zip, bl25-gate-verification.json, bl25-gate-evidence.json и bl25-package-after-gate.json. SHA-256 ZIP отчётов 1d13d59fbaa1aefb44b190ef03b48fdc840d472d6e6017158a8664cf35a1c517 совпал с digest GitHub.
+
+## 9. Восстановление обычного запуска
+
+12.11.2026 [CI #8](https://github.com/VasilevYuV/support-ticket-service/actions/runs/43263479995) выполнен на той же main с verify_publication_gate=false. Verify, image и publish завершились success. Скачанные 25 JUnit XML подтверждают 507 успешных тестов без ошибок и пропусков; PublicationGateProbeTest в артефакте отсутствует.
+
+Образ повторно собран и опубликован. Его загрузка по digest и сравнение ID прошли в CI; отдельное чтение manifest из GHCR подтвердило release.json. Актуальный результат этого запуска:
+
+```text
+tag: ghcr.io/vasilevyuv/support-ticket-service:8b458ffa1998f36d658e4ca2acbb333bd208058e
+image: ghcr.io/vasilevyuv/support-ticket-service@sha256:b22e61410deb1d2a0fb3ac5e00283fc5b63591b4d57f63cf93162a57aa68fc95
+imageId: sha256:bee7264d410ce846d3938337b41fc07b4cb947821d9b8269dfcbd61704ac769f
+```
+
+Повторный обычный запуск обновил SHA-тег новым digest; неизменность предыдущего digest проверялась отдельно между CI #6 и контрольным CI #7, до этого повторного запуска. Для воспроизводимого развёртывания нужно использовать image с digest из выбранного release.json, а не полагаться только на SHA-тег.
+
+Материалы: build/bl25-recovery-test-reports.zip, bl25-recovery-release.zip, bl25-recovery-release.json, bl25-recovery-evidence.json, bl25-recovery-verification.json и bl25-package-after-recovery.json. SHA-256 ZIP отчётов e5359765d08039354fd067c41b577132562d82e117ece53f715f6207b0f3be8a и ZIP release b8af3b3afbc03fbf8fc9f8be63cdcc9a1bbcd1fbe4b37cbaa8fa93279c58f3ef совпали с digest GitHub.
+
+BL-25 завершён: публикация, блокировка после отказа теста и восстановление обычного запуска проверены. OPS-07 и AC-12.3 подтверждены в части публикации; их часть, связанная с доставкой, остаётся BL-26. На 12.11.2026 учебный стенд не предоставлен, локальная виртуальная машина с runner не подготовлена. Работа приложения на стенде и откат не объявляются проверенными.
