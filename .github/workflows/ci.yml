@@ -1,0 +1,100 @@
+name: CI
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  verify:
+    name: Format, build and test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Получить исходники
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Установить Java
+        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Подготовить Gradle и проверить Wrapper
+        uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+        with:
+          cache-provider: basic
+
+      - name: Проверить Docker для Testcontainers
+        run: docker info
+
+      - name: Проверить оформление
+        run: sh ./gradlew spotlessCheck checkTextConventions --no-daemon --console=plain
+
+      - name: Собрать приложение и выполнить тесты
+        run: sh ./gradlew build --no-daemon --console=plain
+
+      - name: Проверить наличие отчётов
+        run: |
+          test -s build/reports/tests/test/index.html
+          test -s build/reports/jacoco/test/jacocoTestReport.xml
+          test -s build/reports/jacoco/test/html/index.html
+
+      - name: Сохранить доступные отчёты, включая неуспешный запуск
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: test-reports-${{ github.sha }}
+          path: |
+            build/test-results/test/*.xml
+            build/reports/tests/test/
+            build/reports/jacoco/test/
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Сохранить исполняемый JAR
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: application-${{ github.sha }}
+          path: |
+            build/libs/*.jar
+            !build/libs/*-plain.jar
+          if-no-files-found: error
+          retention-days: 14
+
+  image:
+    name: Build Docker image
+    needs: verify
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Получить проверенные исходники
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Собрать образ без публикации
+        run: |
+          docker build --tag "support-service:pr-${GITHUB_SHA}" .
+          mkdir -p build/ci
+          docker image inspect "support-service:pr-${GITHUB_SHA}" > build/ci/image.json
+
+      - name: Сохранить сведения об образе
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: image-metadata-${{ github.sha }}
+          path: build/ci/image.json
+          if-no-files-found: error
+          retention-days: 14

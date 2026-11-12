@@ -176,6 +176,7 @@ val checkTextConventions =
                     "docs/**",
                     "src/**",
                     "scripts/**",
+                    ".github/**",
                     "*.gradle.kts",
                     "gradle/*.toml",
                     "Dockerfile",
